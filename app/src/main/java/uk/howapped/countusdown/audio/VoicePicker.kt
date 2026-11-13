@@ -3,7 +3,6 @@ package uk.howapped.countusdown.audio
 import org.json.JSONObject
 import uk.howapped.countusdown.core.Cue
 import uk.howapped.countusdown.core.CueKind
-import uk.howapped.countusdown.core.Tier
 
 /** What the pipeline bundled (assets/audio/manifest.json): voices, variants per tier, clip keys. */
 class AudioManifest(val voices: List<String>, val variants: Map<String, Int>, private val clips: Set<String>) {
@@ -33,5 +32,23 @@ class VoicePicker(private val manifest: AudioManifest, seed: Int) {
     private val variantTurn = mutableMapOf<String, Int>()
     private val offset = seed
 
-    fun pick(cue: Cue): ClipRef = TODO("commit #13")
+    fun pick(cue: Cue): ClipRef {
+        val voices = manifest.voices
+        // Plain rotation through the voices: with two or more, neighbours always differ.
+        val voice = voices[Math.floorMod(voiceTurn++, voices.size)]
+        val group = when (cue.kind) {
+            CueKind.MINUTES -> cue.tier.name.lowercase()
+            CueKind.TARGET -> "target"
+            CueKind.LATE -> "late"
+        }
+        val count = manifest.variants.getValue(group)
+        val turn = variantTurn.getOrPut(group) { offset }
+        variantTurn[group] = turn + 1
+        val variant = Math.floorMod(turn, count)
+        val key = when (cue.kind) {
+            CueKind.MINUTES -> "minutes_${group}_${variant}_${"%02d".format(cue.minutesLeft)}_$voice"
+            else -> "${group}_${variant}_$voice"
+        }
+        return ClipRef(key, voice, variant)
+    }
 }
