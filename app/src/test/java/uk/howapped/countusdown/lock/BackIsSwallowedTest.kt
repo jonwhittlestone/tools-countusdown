@@ -11,12 +11,14 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import uk.howapped.countusdown.FixedClockRule
 import uk.howapped.countusdown.MainActivity
 
 // The Compose rule drives the frame clock, so the endless breathing animation can't stall the test.
 @RunWith(AndroidJUnit4::class)
 class BackIsSwallowedTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val clock = FixedClockRule(FixedClockRule.MID_SCHOOL_RUN)
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun backDoesNotLeaveTheCountdown() {
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
@@ -37,7 +39,8 @@ class BackIsSwallowedTest {
 
 @RunWith(AndroidJUnit4::class)
 class BounceBackTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val clock = FixedClockRule(FixedClockRule.MID_SCHOOL_RUN)
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
     private fun startedServiceActions(): List<String?> {
         val app = ApplicationProvider.getApplicationContext<android.app.Application>()
