@@ -31,6 +31,10 @@ class MainActivity : ComponentActivity() {
     private val clock: Clock = Clock.systemDefaultZone()
     private var countdown by mutableStateOf<Countdown?>(null)
 
+    /** True while the parent menu (opened by the D-pad code) is showing. */
+    var parentMenuOpen by mutableStateOf(false)
+        private set
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // The countdown must stay visible for the whole run: no screensaver, no sleep.
