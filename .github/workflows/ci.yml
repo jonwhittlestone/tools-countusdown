@@ -6,6 +6,17 @@ on:
   pull_request:
 
 jobs:
+  pipeline-tests:
+    name: Audio pipeline tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+      # Only the light dev group: the TTS stack is never installed in CI.
+      - name: Run pytest
+        working-directory: pipeline
+        run: uv run pytest -q
+
   unit-tests:
     name: Unit tests and debug build
     runs-on: ubuntu-latest

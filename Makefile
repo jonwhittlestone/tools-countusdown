@@ -13,6 +13,10 @@ ADB          := $(ANDROID_HOME)/platform-tools/adb
 EMULATOR     := $(ANDROID_HOME)/emulator/emulator
 GRADLE       := ./gradlew
 
+# The pipeline always uses its own pipeline/.venv, even if UV_PROJECT_ENVIRONMENT is set
+# globally for another project (design doc 03.07).
+UV           := UV_PROJECT_ENVIRONMENT=.venv uv
+
 APP_ID       := uk.howapped.countusdown
 ACTIVITY     := $(APP_ID)/.MainActivity
 APK          := app/build/outputs/apk/debug/app-debug.apk
@@ -66,8 +70,12 @@ build: ## Build the debug APK
 	@echo "APK: $(APK)"
 
 .PHONY: test
-test: ## Run the JVM unit tests (no device needed)
+test: test-pipeline ## Run the JVM unit tests and the pipeline tests (no device needed)
 	$(GRADLE) testDebugUnitTest
+
+.PHONY: test-pipeline
+test-pipeline: ## Run the audio pipeline's Python tests
+	cd pipeline && $(UV) run --inexact pytest -q
 
 .PHONY: test-device
 test-device: ## Run instrumented tests on the connected emulator/TV
@@ -77,7 +85,28 @@ test-device: ## Run instrumented tests on the connected emulator/TV
 clean: ## Delete build outputs
 	$(GRADLE) clean
 
-##@ 3. Emulator
+##@ 3. Audio (offline, on doylestone02)
+
+.PHONY: audio
+audio: audio-bed audio-voices ## Regenerate all bundled audio (voices skip clips that already exist)
+
+.PHONY: audio-voices
+audio-voices: ## Render the TTS voice clips + manifest.json (FORCE=1 re-renders everything)
+	cd pipeline && $(UV) sync -q --group tts && $(UV) run --group tts python -m countusdown_pipeline.render $(if $(FORCE),--force)
+
+.PHONY: audio-verify
+audio-verify: ## Transcribe every clip with Whisper and flag any that don't match their script
+	cd pipeline && uv run --no-project --with faster-whisper --with pyyaml python -m countusdown_pipeline.verify
+
+.PHONY: audio-bed
+audio-bed: ## Synthesise the three ambient bed loops with ffmpeg
+	cd pipeline && $(UV) run --inexact python -m countusdown_pipeline.stems
+
+.PHONY: audio-size
+audio-size: ## Show how much the bundled audio adds to the APK
+	@du -sh app/src/main/assets/audio/* 2>/dev/null; ls app/src/main/assets/audio/voice 2>/dev/null | wc -l | xargs echo "voice clips:"
+
+##@ 4. Emulator
 
 .PHONY: emulator
 emulator: ## Start the Google TV emulator (AVD=) and wait until it has booted
@@ -90,7 +119,7 @@ emulator: ## Start the Google TV emulator (AVD=) and wait until it has booted
 emulator-stop: ## Shut down the emulator
 	$(ADB) -s emulator-$(EMU_PORT) emu kill
 
-##@ 4. Device
+##@ 5. Device
 
 .PHONY: devices
 devices: ## List connected devices
@@ -126,7 +155,7 @@ screenshot: ## Save a screenshot of the device to screenshot.png
 uninstall: ## Remove the app from the device
 	$(ADB) uninstall $(APP_ID)
 
-##@ 5. Android TV (over the network)
+##@ 6. Android TV (over the network)
 
 .PHONY: pair
 pair: ## Wireless debugging: pair with ADDR=ip:port from the TV's pairing dialog

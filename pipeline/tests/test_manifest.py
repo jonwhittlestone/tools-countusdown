@@ -36,3 +36,10 @@ def test_each_tier_only_says_its_own_minutes():
     clips = build_manifest(PHRASES, VOICES)
     assert {c.minutes for c in clips if c.tier == "firm"} == {1, 2, 3, 4, 5}
     assert {c.minutes for c in clips if c.tier == "nudge"} == {10}
+
+
+def test_verify_score_is_order_insensitive_and_reads_numbers():
+    from countusdown_pipeline.verify import score
+
+    assert score("In 5 minutes we must leave.", "In five minutes, we must leave!") == 1.0
+    assert score("Everyone, we leave in 30 minutes.", "Everyone we leave in minutes") < 1.0

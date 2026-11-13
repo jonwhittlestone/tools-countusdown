@@ -7,6 +7,14 @@ dependencies = ["pyyaml>=6.0"]
 
 [dependency-groups]
 dev = ["pytest>=8.0"]
+tts = [
+    "chatterbox-tts>=0.1.7",
+    "kokoro>=0.9.4",
+    "setuptools<81",
+    "soundfile>=0.14.0",
+    "torch==2.6.0",
+    "torchaudio==2.6.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -14,3 +22,17 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# The TTS stack is heavy (PyTorch + model weights), so it is an optional group:
+# `uv sync --group tts` on doylestone02 only. CI and tests never need it.
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchaudio = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
