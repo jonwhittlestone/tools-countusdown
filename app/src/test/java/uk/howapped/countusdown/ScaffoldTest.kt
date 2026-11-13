@@ -18,8 +18,8 @@ class ScaffoldTest {
     val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun showsAppName() {
-        compose.onNodeWithText("COUNT-US-DOWN").assertExists()
+    fun opensStraightIntoTheCountdown() {
+        compose.onNodeWithText("leave at", substring = true).assertExists()
     }
 
     @Test
