@@ -41,6 +41,8 @@ flowchart LR
 
 Wireless debugging switches itself off whenever the TV restarts. If `make run-tv` says the TV isn't advertising, turn it back on (no re-pairing needed).
 
+If the TV is advertising but `adb` says the connection was refused, check whether **Tailscale is connected on the TV**. While it is, the TV's Wireless debugging screen shows a VPN address (e.g. `10.5.0.2`) instead of its LAN IP and refuses LAN connections. Disconnect Tailscale on the TV and run the command again.
+
 ## 3. Testing
 
 - `make test` runs the JVM unit tests (Robolectric, pinned to SDK 35 because emulating 36 needs Java 21).
