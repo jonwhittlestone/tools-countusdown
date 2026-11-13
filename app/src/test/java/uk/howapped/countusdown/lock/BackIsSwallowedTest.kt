@@ -2,6 +2,10 @@ package uk.howapped.countusdown.lock
 
 import android.view.KeyEvent
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.lifecycle.Lifecycle
+import androidx.test.core.app.ApplicationProvider
+import org.robolectric.Shadows
+import uk.howapped.countusdown.audio.CountdownService
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
@@ -28,5 +32,22 @@ class BackIsSwallowedTest {
             }
         }
         assertThat(compose.activity.parentMenuOpen).isTrue()
+    }
+}
+
+@RunWith(AndroidJUnit4::class)
+class BounceBackTest {
+    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    private fun startedServiceActions(): List<String?> {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val shadow = Shadows.shadowOf(app)
+        return generateSequence { shadow.nextStartedService }.map { it.action }.toList()
+    }
+
+    @Test fun leavingMidRunAsksToBounceBack() {
+        startedServiceActions() // drain the start-up intents
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED) // onStop, e.g. Home
+        assertThat(startedServiceActions()).contains(CountdownService.ACTION_BOUNCE)
     }
 }

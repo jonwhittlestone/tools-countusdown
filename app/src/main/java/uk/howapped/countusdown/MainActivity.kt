@@ -92,6 +92,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Left mid-run without the code (Home on the remote): ask the service to bring us back. */
+    override fun onStop() {
+        super.onStop()
+        val running = countdown ?: return
+        val stillRunning = running.phaseAt(Instant.now(clock)) != Phase.DONE
+        if (!exited && !isFinishing && !isChangingConfigurations && stillRunning) {
+            startService(CountdownService.bounceIntent(this))
+        }
+    }
+
     /** The 07:45 alarm can arrive while a manual run is showing: the new run replaces it. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
