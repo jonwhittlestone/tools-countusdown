@@ -1,8 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Placeholder: a plain ring. Replaced by the real icon in commit #23. -->
+<!--
+  COUNT-US-DOWN: a little house inside the countdown ring. Three quarters of the ring is left,
+  draining clockwise from 12 o'clock; the amber dot is the moment we leave.
+  Everything sits inside the 66dp adaptive-icon safe zone (21..87).
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:strokeColor="@color/mist" android:strokeWidth="5"
-        android:pathData="M54,32 a22,22 0 1,1 0,44 a22,22 0 1,1 0,-44" />
+    <!-- Faint full track -->
+    <path android:strokeColor="@color/track" android:strokeWidth="4.5"
+        android:pathData="M54,28 a26,26 0 1,1 0,52 a26,26 0 1,1 0,-52" />
+    <!-- Time left: 270 degrees clockwise from the top -->
+    <path android:strokeColor="@color/mist" android:strokeWidth="4.5" android:strokeLineCap="round"
+        android:pathData="M54,28 A26,26 0 1,1 28,54" />
+    <!-- The moment we leave -->
+    <path android:fillColor="@color/amber"
+        android:pathData="M28,54 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    <!-- House: roof and walls, with the door left open in amber -->
+    <path android:fillColor="@color/mist"
+        android:pathData="M54,40.5 L67,52 L63,52 L63,66 L45,66 L45,52 L41,52 Z" />
+    <path android:fillColor="@color/amber"
+        android:pathData="M51,57 h6 v9 h-6 z" />
 </vector>

@@ -106,6 +106,10 @@ audio-bed: ## Synthesise the three ambient bed loops with ffmpeg
 audio-size: ## Show how much the bundled audio adds to the APK
 	@du -sh app/src/main/assets/audio/* 2>/dev/null; ls app/src/main/assets/audio/voice 2>/dev/null | wc -l | xargs echo "voice clips:"
 
+.PHONY: banner
+banner: ## Re-render the Android TV banner PNG (scripts/banner.py, needs Pillow via uv)
+	uv run --no-project --with pillow python scripts/banner.py
+
 ##@ 4. Emulator
 
 .PHONY: emulator
