@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer (Android 13+): the same ring and house in one colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="4.5" android:strokeLineCap="round"
+        android:pathData="M54,28 A26,26 0 1,1 28,54" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M54,40.5 L67,52 L63,52 L63,66 L57,66 L57,57 L51,57 L51,66 L45,66 L45,52 L41,52 Z" />
+</vector>

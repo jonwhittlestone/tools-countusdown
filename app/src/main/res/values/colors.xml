@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Placeholder palette; the real icon and banner land in commit #23. -->
+    <!-- The countdown's own palette (ui/CountdownScreen.kt). -->
     <color name="night">#0E1A2B</color>
+    <color name="dusk">#241F35</color>
     <color name="mist">#CFD8E3</color>
+    <color name="track">#33CFD8E3</color>
+    <color name="amber">#E8B04A</color>
 </resources>
