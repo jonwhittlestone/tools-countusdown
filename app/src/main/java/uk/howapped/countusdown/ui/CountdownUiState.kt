@@ -1,7 +1,9 @@
 package uk.howapped.countusdown.ui
 
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import uk.howapped.countusdown.core.Countdown
 import uk.howapped.countusdown.core.Phase
 
@@ -16,4 +18,15 @@ data class CountdownUiState(
     val leaveAt: String,
 )
 
-fun Countdown.uiStateAt(now: Instant, zone: ZoneId): CountdownUiState = TODO("commit #7")
+private val HH_MM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+fun Countdown.uiStateAt(now: Instant, zone: ZoneId): CountdownUiState {
+    val total = Duration.between(startedAt, target).seconds.toFloat()
+    val left = Duration.between(now, target).seconds.coerceIn(0, total.toLong())
+    return CountdownUiState(
+        phase = phaseAt(now),
+        minutesLeft = ((left + 59) / 60).toInt(),
+        fractionLeft = if (total > 0) left / total else 0f,
+        leaveAt = HH_MM.format(target.atZone(zone)),
+    )
+}
