@@ -1,0 +1,10 @@
+# Copy to local.mk (gitignored) for settings specific to this machine and home network.
+# Find the names with `make wifi-devices` once a TV is paired (make pair).
+
+# Living room: make run-tv
+TV       = adb-123456789012345
+# Front room: make run-front-tv
+FRONT_TV = adb-543210987654321
+
+# A TV using classic network adb on port 5555 can be given by IP instead:
+# TV = 192.168.1.40
