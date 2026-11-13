@@ -16,8 +16,25 @@ class Clip:
 
 
 def clip_key(kind: str, tier: str | None, variant: int, minutes: int, voice: str) -> str:
-    raise NotImplementedError("commit #9")
+    """The file name (without extension) the app looks clips up by. Changing it breaks the app."""
+    if kind == "minutes":
+        return f"minutes_{tier}_{variant}_{minutes:02d}_{voice}"
+    return f"{kind}_{variant}_{voice}"
+
+
+def _fill(template: str, minutes: int) -> str:
+    return template.format(minutes=minutes, unit="minute" if minutes == 1 else "minutes")
 
 
 def build_manifest(phrases: dict, voices: list[dict]) -> list[Clip]:
-    raise NotImplementedError("commit #9")
+    clips: list[Clip] = []
+    for voice in (v["id"] for v in voices):
+        for tier, templates in phrases["tiers"].items():
+            for minutes in phrases["minutes"][tier]:
+                for variant, template in enumerate(templates):
+                    clips.append(Clip(clip_key("minutes", tier, variant, minutes, voice),
+                                      "minutes", tier, variant, minutes, voice, _fill(template, minutes)))
+        for kind in ("target", "late"):
+            for variant, text in enumerate(phrases[kind]):
+                clips.append(Clip(clip_key(kind, None, variant, 0, voice), kind, None, variant, 0, voice, text))
+    return clips
