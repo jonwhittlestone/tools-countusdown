@@ -11,9 +11,11 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import uk.howapped.countusdown.MainActivity
 import uk.howapped.countusdown.core.Countdown
 import uk.howapped.countusdown.core.Phase
 import uk.howapped.countusdown.core.Preset
@@ -38,8 +40,34 @@ class CountdownService : Service() {
         }
     }
 
+    /**
+     * The countdown was left mid-run (Home on the remote): bring it back. Apps can't block Home,
+     * but with "display over other apps" granted the service may restart the activity.
+     * Not if the TV has been switched off meanwhile: that was a grown-up's decision.
+     */
+    private val bounce = Runnable {
+        val running = countdown ?: return@Runnable
+        val now = Instant.now(clock)
+        val interactive = getSystemService(PowerManager::class.java).isInteractive
+        if (interactive && running.phaseAt(now) != Phase.DONE) {
+            startActivity(
+                Intent(this, MainActivity::class.java).putCountdown(running)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),
+            )
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startInForeground()
+        if (intent?.action == ACTION_STOP) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        if (intent?.action == ACTION_BOUNCE) {
+            handler.removeCallbacks(bounce)
+            handler.postDelayed(bounce, BOUNCE_DELAY_MS)
+            return START_NOT_STICKY
+        }
         val next = intent?.let(::countdownFrom) ?: return START_NOT_STICKY
         if (next != countdown) {
             // A new run replaces whatever was playing.
@@ -78,6 +106,9 @@ class CountdownService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
+        const val ACTION_STOP = "uk.howapped.countusdown.action.STOP"
+        const val ACTION_BOUNCE = "uk.howapped.countusdown.action.BOUNCE"
+        const val BOUNCE_DELAY_MS = 1500L
         private const val CHANNEL = "countdown"
         private const val NOTIFICATION_ID = 1
         const val EXTRA_PRESET_ID = "preset_id"
@@ -85,6 +116,10 @@ class CountdownService : Service() {
         const val EXTRA_DURATION = "duration_minutes"
         const val EXTRA_GRACE = "grace_minutes"
         const val EXTRA_STARTED_AT = "started_at_ms"
+
+        fun bounceIntent(context: Context): Intent = Intent(context, CountdownService::class.java).setAction(ACTION_BOUNCE)
+
+        fun stopIntent(context: Context): Intent = Intent(context, CountdownService::class.java).setAction(ACTION_STOP)
 
         fun intentFor(context: Context, countdown: Countdown): Intent =
             Intent(context, CountdownService::class.java).putCountdown(countdown)
