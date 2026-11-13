@@ -15,7 +15,12 @@ data class Preset(
     val name: String,
     val durationMinutes: Int,
     val graceMinutes: Int,
-)
+) {
+    companion object {
+        /** The durations a preset may use: the voice library has a clip for each (pipeline/phrases.yaml). */
+        val ALLOWED_DURATIONS = listOf(5, 10, 15, 20, 25, 30, 45, 60)
+    }
+}
 
 /** One run of a preset, started at [startedAt]. */
 data class Countdown(val preset: Preset, val startedAt: Instant) {
