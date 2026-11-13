@@ -13,7 +13,9 @@ import androidx.compose.runtime.setValue
 import java.time.Clock
 import java.time.Instant
 import kotlinx.coroutines.delay
+import uk.howapped.countusdown.audio.CountdownService
 import uk.howapped.countusdown.core.Countdown
+import uk.howapped.countusdown.core.Phase
 import uk.howapped.countusdown.core.Preset
 import uk.howapped.countusdown.ui.CountdownScreen
 import uk.howapped.countusdown.ui.uiStateAt
@@ -47,6 +49,8 @@ class MainActivity : ComponentActivity() {
             graceMinutes = intent.getIntExtra(EXTRA_GRACE, 5),
         )
         val countdown = Countdown(preset, Instant.now(clock))
+        // The service owns the audio; the activity only draws. Both work from the same startedAt.
+        startForegroundService(CountdownService.intentFor(this, countdown))
 
         setContent {
             var now by remember { mutableStateOf(Instant.now(clock)) }
@@ -56,7 +60,10 @@ class MainActivity : ComponentActivity() {
                     now = Instant.now(clock)
                 }
             }
-            CountdownScreen(countdown.uiStateAt(now, clock.zone))
+            val state = countdown.uiStateAt(now, clock.zone)
+            // Once the run is over, hand the TV back.
+            LaunchedEffect(state.phase) { if (state.phase == Phase.DONE) finish() }
+            CountdownScreen(state)
         }
     }
 

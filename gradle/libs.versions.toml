@@ -5,6 +5,7 @@ kotlin = "2.2.10"
 # 2026.09.00+ needs compileSdk 37; only android-36 is installed here (design doc 03.05).
 compose-bom = "2026.06.01"
 activity = "1.13.0"
+media3 = "1.11.1"
 junit = "4.13.2"
 truth = "1.4.5"
 robolectric = "4.17"
@@ -15,6 +16,7 @@ androidx-test-runner = "1.7.0"
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-foundation = { module = "androidx.compose.foundation:foundation" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
