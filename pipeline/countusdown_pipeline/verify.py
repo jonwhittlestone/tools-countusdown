@@ -33,6 +33,17 @@ def score(script: str, heard: str) -> float:
     return hit / max(len(want), 1)
 
 
+def decode(path: Path):
+    """16 kHz mono float samples via ffmpeg (sidesteps faster-whisper's PyAV version coupling)."""
+    import subprocess
+
+    import numpy as np
+
+    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(path), "-f", "f32le", "-ac", "1",
+                          "-ar", "16000", "-"], check=True, capture_output=True).stdout
+    return np.frombuffer(raw, dtype=np.float32)
+
+
 def main(threshold: float = 0.8) -> int:
     from faster_whisper import WhisperModel
 
@@ -40,7 +51,7 @@ def main(threshold: float = 0.8) -> int:
     clips = json.loads((ASSETS / "manifest.json").read_text())["clips"]
     bad = []
     for i, (key, script) in enumerate(sorted(clips.items()), 1):
-        segments, _ = model.transcribe(str(ASSETS / "voice" / f"{key}.ogg"), language="en", beam_size=1)
+        segments, _ = model.transcribe(decode(ASSETS / "voice" / f"{key}.ogg"), language="en", beam_size=1)
         heard = " ".join(s.text for s in segments).strip()
         s = score(script, heard)
         flag = "  <-- CHECK" if s < threshold else ""
