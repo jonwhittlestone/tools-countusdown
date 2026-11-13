@@ -15,6 +15,7 @@ import android.os.PowerManager
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import uk.howapped.countusdown.AppClock
 import uk.howapped.countusdown.MainActivity
 import uk.howapped.countusdown.core.Countdown
 import uk.howapped.countusdown.core.Phase
@@ -26,7 +27,7 @@ import uk.howapped.countusdown.core.Preset
  * is recreated. Stops itself when the countdown is done.
  */
 class CountdownService : Service() {
-    private val clock: Clock = Clock.systemDefaultZone()
+    private val clock: Clock get() = AppClock.clock
     private val handler = Handler(Looper.getMainLooper())
     private var player: ExoClipPlayer? = null
     private var scheduler: CueScheduler? = null

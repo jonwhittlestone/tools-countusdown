@@ -12,7 +12,7 @@ import uk.howapped.countusdown.schedule.StartReceiver
 
 /**
  * Debug builds only. Arms the same exact alarm the 07:45 schedule uses, but N seconds from now:
- *   adb shell am broadcast -a uk.howapped.countusdown.DEBUG_ARM -p uk.howapped.countusdown --ei in_seconds 60
+ *   adb shell am broadcast -a uk.howapped.countusdown.DEBUG_ARM -p uk.howapped.countusdown --ei in_seconds 60 [--es preset_id football]
  */
 class DebugArmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -20,6 +20,7 @@ class DebugArmReceiver : BroadcastReceiver() {
         val pending = PendingIntent.getBroadcast(
             context, 1,
             Intent(context, StartReceiver::class.java).setAction(Runs.ACTION_START)
+                .putExtra(Runs.EXTRA_PRESET_ID, intent.getStringExtra("preset_id") ?: "school")
                 .putExtra(CountdownService.EXTRA_STARTED_AT, at),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

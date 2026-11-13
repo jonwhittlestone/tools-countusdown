@@ -38,7 +38,6 @@ private val NightBlue = Color(0xFF0E1A2B)
 private val Dusk = Color(0xFF241F35)
 private val GraceAmber = Color(0xFF3A2814)
 private val LateDim = Color(0xFF0D0B09)
-private val Mist = Color(0xFFCFD8E3)
 private val Amber = Color(0xFFE8B04A)
 private val Track = Color(0x22CFD8E3)
 
