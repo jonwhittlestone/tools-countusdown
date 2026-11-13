@@ -128,8 +128,20 @@ devices: ## List connected devices
 .PHONY: install
 # adb install rather than `./gradlew installDebug`: Gradle's device-property
 # queries time out over wireless debugging (26-app-01 design doc, 03.02).
-install: build ## Build and install the debug APK
+install: build ## Build and install the debug APK (and grant what Google TV has no settings for)
 	$(ADB) install -r $(APK)
+	@$(MAKE) --no-print-directory grant
+
+.PHONY: grant
+# Android 14 only lets an app bring itself to the front from the background (the 07:45 alarm)
+# if it may "display over other apps"; Google TV has no settings screen to allow that.
+grant: ## Allow the app to come to the front by itself (needed for the scheduled start)
+	$(ADB) shell appops set $(APP_ID) SYSTEM_ALERT_WINDOW allow
+	@$(ADB) shell appops get $(APP_ID) SYSTEM_ALERT_WINDOW
+
+.PHONY: alarms
+alarms: ## Show the app's next scheduled alarm on the device
+	@$(ADB) shell dumpsys alarm | grep -A4 "$(APP_ID)" | grep -E "type=|origWhen|when=|tag=" | head -8
 
 .PHONY: launch
 launch: ## Start the app (already installed)

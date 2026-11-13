@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: hooks for testing the scheduled start without waiting until 07:45. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <receiver
+            android:name=".debug.DebugArmReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="uk.howapped.countusdown.DEBUG_ARM" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

@@ -1,5 +1,6 @@
 package uk.howapped.countusdown
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -16,16 +17,19 @@ import kotlinx.coroutines.delay
 import uk.howapped.countusdown.audio.CountdownService
 import uk.howapped.countusdown.core.Countdown
 import uk.howapped.countusdown.core.Phase
-import uk.howapped.countusdown.core.Preset
+import uk.howapped.countusdown.schedule.Runs
 import uk.howapped.countusdown.ui.CountdownScreen
 import uk.howapped.countusdown.ui.uiStateAt
 
 /**
- * Starts a countdown when opened. Until presets and scheduling land (F5, F7), it runs
- * "School run" from now; `--ei duration_minutes N --ei grace_minutes G` overrides it for testing.
+ * The full-screen countdown. Which run it shows, in order of preference:
+ *  1. the one in the launching intent (the 07:45 alarm, or a preset started by hand),
+ *  2. the scheduled run already in progress (opened from the launcher at 07:52),
+ *  3. otherwise a School run starting now (`--ei duration_minutes N --ei grace_minutes G` to test).
  */
 class MainActivity : ComponentActivity() {
     private val clock: Clock = Clock.systemDefaultZone()
+    private var countdown by mutableStateOf<Countdown?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,17 +46,12 @@ class MainActivity : ComponentActivity() {
             window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
         }
 
-        val preset = Preset(
-            id = "school",
-            name = "School run",
-            durationMinutes = intent.getIntExtra(EXTRA_DURATION, 30),
-            graceMinutes = intent.getIntExtra(EXTRA_GRACE, 5),
-        )
-        val countdown = Countdown(preset, Instant.now(clock))
-        // The service owns the audio; the activity only draws. Both work from the same startedAt.
-        startForegroundService(CountdownService.intentFor(this, countdown))
+        // Opening the app is a good moment to make sure tomorrow's alarm is armed.
+        Runs.arm(this, clock)
+        start(resolve(intent))
 
         setContent {
+            val current = countdown ?: return@setContent
             var now by remember { mutableStateOf(Instant.now(clock)) }
             LaunchedEffect(Unit) {
                 while (true) {
@@ -60,11 +59,35 @@ class MainActivity : ComponentActivity() {
                     now = Instant.now(clock)
                 }
             }
-            val state = countdown.uiStateAt(now, clock.zone)
+            val state = current.uiStateAt(now, clock.zone)
             // Once the run is over, hand the TV back.
             LaunchedEffect(state.phase) { if (state.phase == Phase.DONE) finish() }
             CountdownScreen(state)
         }
+    }
+
+    /** The 07:45 alarm can arrive while a manual run is showing: the new run replaces it. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        CountdownService.countdownFrom(intent)?.let(::start)
+    }
+
+    private fun resolve(intent: Intent): Countdown =
+        CountdownService.countdownFrom(intent)
+            ?: Runs.active(this, clock)
+            ?: Countdown(
+                Runs.SCHOOL_RUN.copy(
+                    durationMinutes = intent.getIntExtra(EXTRA_DURATION, Runs.SCHOOL_RUN.durationMinutes),
+                    graceMinutes = intent.getIntExtra(EXTRA_GRACE, Runs.SCHOOL_RUN.graceMinutes),
+                ),
+                Instant.now(clock),
+            )
+
+    private fun start(next: Countdown) {
+        countdown = next
+        // The service owns the audio; the activity only draws. Both work from the same startedAt.
+        // Starting the service with the same run twice is harmless: it ignores duplicates.
+        startForegroundService(CountdownService.intentFor(this, next))
     }
 
     companion object {
