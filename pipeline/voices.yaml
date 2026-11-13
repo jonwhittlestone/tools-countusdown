@@ -1,0 +1,15 @@
+# Built-in stock voices only (design doc Q5): no cloning, no personal voice data.
+# engine: kokoro = hexgrad/Kokoro-82M (Apache-2.0); chatterbox = ResembleAI/chatterbox (MIT) default voice.
+voices:
+  - id: emma
+    engine: kokoro
+    voice: bf_emma
+  - id: george
+    engine: kokoro
+    voice: bm_george
+  - id: isabella
+    engine: kokoro
+    voice: bf_isabella
+  - id: chatter
+    engine: chatterbox
+    voice: default
