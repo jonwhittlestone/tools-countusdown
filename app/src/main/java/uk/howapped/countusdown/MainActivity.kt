@@ -3,8 +3,10 @@ package uk.howapped.countusdown
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -13,11 +15,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.delay
 import uk.howapped.countusdown.audio.CountdownService
 import uk.howapped.countusdown.core.Countdown
 import uk.howapped.countusdown.core.Phase
+import uk.howapped.countusdown.lock.CodeMatcher
+import uk.howapped.countusdown.lock.LockStore
+import uk.howapped.countusdown.lock.Pad
 import uk.howapped.countusdown.schedule.Runs
+import uk.howapped.countusdown.ui.MenuItem
+import uk.howapped.countusdown.ui.ParentMenu
 import uk.howapped.countusdown.ui.CountdownScreen
 import uk.howapped.countusdown.ui.uiStateAt
 
@@ -30,6 +38,11 @@ import uk.howapped.countusdown.ui.uiStateAt
 class MainActivity : ComponentActivity() {
     private val clock: Clock = Clock.systemDefaultZone()
     private var countdown by mutableStateOf<Countdown?>(null)
+
+    private val matcher by lazy { CodeMatcher(LockStore.code(this)) }
+
+    /** Set when a parent exits with the code: the countdown must not bounce back. */
+    private var exited = false
 
     /** True while the parent menu (opened by the D-pad code) is showing. */
     var parentMenuOpen by mutableStateOf(false)
@@ -50,6 +63,14 @@ class MainActivity : ComponentActivity() {
             window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
         }
 
+        // Back does nothing during a countdown (it only closes the parent menu). Home can't be
+        // blocked by an app; that's handled by bouncing back (commit #20).
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                parentMenuOpen = false
+            }
+        })
+
         // Opening the app is a good moment to make sure tomorrow's alarm is armed.
         Runs.arm(this, clock)
         start(resolve(intent))
@@ -67,6 +88,7 @@ class MainActivity : ComponentActivity() {
             // Once the run is over, hand the TV back.
             LaunchedEffect(state.phase) { if (state.phase == Phase.DONE) finish() }
             CountdownScreen(state)
+            if (parentMenuOpen) ParentMenu(parentMenuItems(), onDismiss = { parentMenuOpen = false })
         }
     }
 
@@ -74,6 +96,40 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         CountdownService.countdownFrom(intent)?.let(::start)
+    }
+
+    /**
+     * While the parent menu is closed, every D-pad press goes to the code matcher and nothing
+     * else: no focus moves, no hint that anything is listening. OK/Enter are swallowed too.
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (parentMenuOpen) return super.dispatchKeyEvent(event)
+        val pad = Pad.from(event.keyCode)
+        if (pad != null) {
+            if (event.action == KeyEvent.ACTION_UP && matcher.feed(pad)) parentMenuOpen = true
+            return true
+        }
+        if (event.keyCode in SWALLOWED) return true
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun parentMenuItems(): List<MenuItem> = buildList {
+        add(MenuItem("Exit countdown") { exit(skipToday = false) })
+        if (Runs.active(this@MainActivity, clock) != null || isScheduledDay()) {
+            add(MenuItem("Exit and skip today") { exit(skipToday = true) })
+        }
+        add(MenuItem("Cancel") { parentMenuOpen = false })
+    }
+
+    private fun isScheduledDay(): Boolean =
+        LocalDate.now(clock).dayOfWeek in Runs.SCHOOL_SCHEDULE.days
+
+    /** The only way out: stops the audio, and stops the countdown coming back. */
+    private fun exit(skipToday: Boolean) {
+        exited = true
+        if (skipToday) Runs.skip(this, LocalDate.now(clock))
+        startService(CountdownService.stopIntent(this))
+        finish()
     }
 
     private fun resolve(intent: Intent): Countdown =
@@ -95,6 +151,10 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        private val SWALLOWED = setOf(
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER,
+            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SEARCH,
+        )
         const val EXTRA_DURATION = "duration_minutes"
         const val EXTRA_GRACE = "grace_minutes"
     }

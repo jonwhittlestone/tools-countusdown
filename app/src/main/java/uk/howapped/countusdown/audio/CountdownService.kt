@@ -40,6 +40,10 @@ class CountdownService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startInForeground()
+        if (intent?.action == ACTION_STOP) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val next = intent?.let(::countdownFrom) ?: return START_NOT_STICKY
         if (next != countdown) {
             // A new run replaces whatever was playing.
@@ -78,6 +82,7 @@ class CountdownService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
+        const val ACTION_STOP = "uk.howapped.countusdown.action.STOP"
         private const val CHANNEL = "countdown"
         private const val NOTIFICATION_ID = 1
         const val EXTRA_PRESET_ID = "preset_id"
@@ -85,6 +90,8 @@ class CountdownService : Service() {
         const val EXTRA_DURATION = "duration_minutes"
         const val EXTRA_GRACE = "grace_minutes"
         const val EXTRA_STARTED_AT = "started_at_ms"
+
+        fun stopIntent(context: Context): Intent = Intent(context, CountdownService::class.java).setAction(ACTION_STOP)
 
         fun intentFor(context: Context, countdown: Countdown): Intent =
             Intent(context, CountdownService::class.java).putCountdown(countdown)
