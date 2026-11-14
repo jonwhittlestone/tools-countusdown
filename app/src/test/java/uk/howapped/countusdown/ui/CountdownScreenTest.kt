@@ -1,6 +1,10 @@
 package uk.howapped.countusdown.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
@@ -48,5 +52,16 @@ class CountdownScreenTest {
     @Test fun graceAndLateSayTimeToGo() {
         compose.setContent { CountdownScreen(CountdownUiState(Phase.GRACE, 0, 0f, "08:15")) }
         compose.onNodeWithText("Time to go").assertExists()
+    }
+
+    @Test fun aQuietHintSaysHowToOpenTheMenuWithoutGivingAwayTheCode() {
+        var phase by mutableStateOf(Phase.CALM)
+        compose.setContent { CountdownScreen(CountdownUiState(phase, 5, 0.2f, "08:15")) }
+        for (p in listOf(Phase.CALM, Phase.GRACE, Phase.LATE)) {
+            phase = p
+            compose.onNodeWithText(MENU_HINT).assertExists()
+            compose.onNodeWithTag(MENU_ICON).assertExists()
+            assertThat(MENU_HINT).doesNotContain("←")
+        }
     }
 }

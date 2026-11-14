@@ -12,7 +12,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.aspectRatio
@@ -23,6 +27,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -43,6 +49,10 @@ private val Track = Color(0x22CFD8E3)
 
 /** One breath of the pulse: slow enough to be calming, never a tick (screentime extension, EASE_IN_OUT_SINE). */
 private const val BREATH_MS = 4000
+
+/** Tells a grown-up how to reach the parent menu, without giving the code away. */
+const val MENU_HINT = "Menu: enter the parent code"
+const val MENU_ICON = "menu-icon"
 
 @Composable
 fun CountdownScreen(state: CountdownUiState) {
@@ -96,6 +106,23 @@ fun CountdownScreen(state: CountdownUiState) {
                 )
             }
         }
+        MenuHint(accent, Modifier.align(Alignment.BottomEnd).padding(32.dp))
+    }
+}
+
+/** A small, dim ≡ and label in the corner: there for a parent who looks, easy for a child to ignore. */
+@Composable
+private fun MenuHint(colour: Color, modifier: Modifier) {
+    val dim = colour.copy(alpha = 0.35f)
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Canvas(Modifier.size(20.dp).testTag(MENU_ICON)) {
+            val stroke = 2.dp.toPx()
+            for (y in listOf(0.2f, 0.5f, 0.8f)) {
+                drawLine(dim, Offset(0f, size.height * y), Offset(size.width, size.height * y), stroke, StrokeCap.Round)
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        BasicText(MENU_HINT, style = TextStyle(color = dim, fontSize = 16.sp))
     }
 }
 
