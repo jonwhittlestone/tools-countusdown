@@ -19,7 +19,11 @@ class PresetStore(private val context: Context) {
     fun all(): List<StoredPreset> {
         val json = prefs().getString(KEY, null) ?: return SEEDS
         val array = JSONArray(json)
-        return List(array.length()) { decode(array.getJSONObject(it)) }
+        // Devices that saved presets before the current seeds existed: drop an untouched Football
+        // and add any ready-made preset they're missing.
+        val stored = List(array.length()) { decode(array.getJSONObject(it)) }.filter { it != OLD_FOOTBALL }
+        val ids = stored.map { it.preset.id }.toSet()
+        return stored + SEEDS.filter { it.preset.id !in ids }
     }
 
     fun save(presets: List<StoredPreset>) {
@@ -63,26 +67,34 @@ class PresetStore(private val context: Context) {
         private const val KEY = "presets"
         const val MAX_GRACE = 15
 
-        /** Names for added presets, picked with left/right (typing on a TV remote is miserable). */
-        val NAME_CHOICES = listOf(
-            "Leave the house", "Swimming", "Park", "Bedtime", "Getting dressed", "Screens off", "Shopping", "Visiting", "Music lesson",
-        )
+        /** A generic name that suits any trip out; extra copies are numbered. */
+        const val NEW_NAME = "Leave the house"
 
-        /** A new 10-minute preset that starts by hand, with an id and name nobody else has. */
+        /** A new 10-minute preset that starts by hand: "Leave the house", then "Leave the house 2"… */
         fun newPreset(existing: List<StoredPreset>): StoredPreset {
             val ids = existing.map { it.preset.id }.toSet()
             val n = generateSequence(1) { it + 1 }.first { "custom-$it" !in ids }
             val used = existing.map { it.preset.name }.toSet()
-            val name = NAME_CHOICES.firstOrNull { it !in used } ?: "Preset $n"
+            val name = generateSequence(1) { it + 1 }
+                .map { if (it == 1) NEW_NAME else "$NEW_NAME $it" }
+                .first { it !in used }
             return StoredPreset(Preset("custom-$n", name, 10, 0), schedule = null)
         }
 
-        /** School run and Football always stay; anything added can go. */
+        /** The ready-made presets always stay; anything added can go. */
         fun canDelete(p: StoredPreset): Boolean = SEEDS.none { it.preset.id == p.preset.id }
+
+        const val TEST_ID = "leave-5s"
 
         val SEEDS = listOf(
             StoredPreset(Preset("school", "School run", 30, 5), Schedule(Schedule.WEEKDAYS, LocalTime.of(7, 45))),
-            StoredPreset(Preset("football", "Football", 5, 0), schedule = null),
+            // Multipurpose, replacing the old Football seed (design doc 03.19).
+            StoredPreset(Preset("leave-30m", "Leave the house : 30m", 30, 5), schedule = null),
+            // For smoke testing from the remote: the whole run in 5 seconds.
+            StoredPreset(Preset(TEST_ID, "Leave the house : 5s", Preset.FIVE_SECONDS, 0), schedule = null),
         )
+
+        /** The first seed list (before 2026-11-16): an unchanged Football is replaced on upgrade. */
+        private val OLD_FOOTBALL = StoredPreset(Preset("football", "Football", 5, 0), schedule = null)
     }
 }

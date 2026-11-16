@@ -250,7 +250,7 @@ class MainActivity : ComponentActivity() {
             })
         }
         PresetStore(this@MainActivity).all().forEach { p ->
-            add(MenuItem("Start ${p.preset.name} (${p.preset.durationMinutes} min)") {
+            add(MenuItem("Start ${p.preset.name} (${p.preset.lengthLabel})") {
                 overlay = Overlay.NONE
                 start(Countdown(p.preset, Instant.now(clock)))
             })

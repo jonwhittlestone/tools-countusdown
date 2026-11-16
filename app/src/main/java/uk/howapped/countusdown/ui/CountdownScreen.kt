@@ -81,13 +81,17 @@ fun CountdownScreen(state: CountdownUiState) {
             Phase.CALM, Phase.PENDING -> {
                 Ring(fraction = state.fractionLeft, colour = accent)
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    // The 5-second test counts seconds; every real run counts minutes.
+                    val seconds = state.secondsLeft
+                    val count = seconds ?: state.minutesLeft
+                    val unit = if (seconds != null) "second" else "minute"
                     BasicText(
-                        text = state.minutesLeft.toString(),
+                        text = count.toString(),
                         modifier = Modifier.alpha(breath),
                         style = TextStyle(color = accent, fontSize = 160.sp, fontWeight = FontWeight.Light),
                     )
                     BasicText(
-                        text = if (state.minutesLeft == 1) "minute" else "minutes",
+                        text = if (count == 1) unit else "${unit}s",
                         style = TextStyle(color = accent.copy(alpha = 0.7f), fontSize = 32.sp),
                     )
                     Spacer(Modifier.height(48.dp))
