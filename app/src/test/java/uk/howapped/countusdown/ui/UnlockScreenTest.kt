@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
@@ -42,7 +43,7 @@ class UnlockScreenTest {
     @Test fun cancelCloses() {
         var cancelled = false
         compose.setContent { UnlockScreen(code, onUnlock = {}, onCancel = { cancelled = true }) }
-        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Cancel").performScrollTo().performClick()
         assertThat(cancelled).isTrue()
     }
 }

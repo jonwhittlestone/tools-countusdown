@@ -48,6 +48,7 @@ import uk.howapped.countusdown.ui.MenuItem
 import uk.howapped.countusdown.ui.ParentMenu
 import uk.howapped.countusdown.ui.PresetEditor
 import uk.howapped.countusdown.ui.uiStateAt
+import uk.howapped.countusdown.ui.UnlockScreen
 
 /**
  * The one screen. Which run it shows, in order of preference:
@@ -64,7 +65,7 @@ class MainActivity : ComponentActivity() {
     /** Bumped when the takeover hands over: the countdown fades in from night blue. */
     private var fadeIns by mutableIntStateOf(0)
 
-    private enum class Overlay { NONE, MENU, EDITOR, CODE, CHOICE, PERMISSION }
+    private enum class Overlay { NONE, MENU, EDITOR, CODE, CHOICE, PERMISSION, UNLOCK }
     private var overlay by mutableStateOf(Overlay.NONE)
 
     /** True when the menu was opened with the code: only then can the code or today's run change. */
@@ -72,6 +73,9 @@ class MainActivity : ComponentActivity() {
 
     /** True while the parent menu (opened by the D-pad code) is showing. */
     val parentMenuOpen: Boolean get() = overlay == Overlay.MENU
+
+    /** True while the code screen (hold OK, or tap the hint) is asking for the parent code. */
+    val unlockOpen: Boolean get() = overlay == Overlay.UNLOCK
 
     private var matcher = CodeMatcher(LockStore.DEFAULT_CODE)
 
@@ -142,7 +146,7 @@ class MainActivity : ComponentActivity() {
             val state = current.uiStateAt(now, clock.zone)
             // Once the run is over, hand the TV back.
             LaunchedEffect(state.phase) { if (state.phase == Phase.DONE) finish() }
-            CountdownScreen(state)
+            CountdownScreen(state, onMenu = { overlay = Overlay.UNLOCK })
         }
         when (overlay) {
             Overlay.MENU -> ParentMenu(parentMenuItems(), onDismiss = { overlay = Overlay.NONE })
@@ -161,6 +165,11 @@ class MainActivity : ComponentActivity() {
                     matcher = CodeMatcher(it)
                     overlay = Overlay.NONE
                 },
+                onCancel = { overlay = Overlay.NONE },
+            )
+            Overlay.UNLOCK -> UnlockScreen(
+                LockStore.code(this),
+                onUnlock = { openMenu(unlocked = true) },
                 onCancel = { overlay = Overlay.NONE },
             )
             Overlay.CHOICE -> StartChoiceScreen(
@@ -225,6 +234,11 @@ class MainActivity : ComponentActivity() {
         // Idle, there is no countdown to protect: OK opens the menu (without the lock-changing items).
         if (countdown == null && event.keyCode in OK_KEYS) {
             if (event.action == KeyEvent.ACTION_UP) openMenu(unlocked = false)
+            return true
+        }
+        // During a run, holding OK asks for the code openly; a quick press still does nothing.
+        if (event.keyCode in OK_KEYS && event.action == KeyEvent.ACTION_DOWN && event.repeatCount > 0) {
+            overlay = Overlay.UNLOCK
             return true
         }
         val pad = Pad.from(event.keyCode)

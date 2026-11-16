@@ -67,7 +67,7 @@ class CountdownScreenTest {
         for (p in listOf(Phase.CALM, Phase.GRACE, Phase.LATE)) {
             phase = p
             compose.onNodeWithText(MENU_HINT).assertExists()
-            compose.onNodeWithTag(MENU_ICON).assertExists()
+            compose.onNodeWithTag(MENU_ICON, useUnmergedTree = true).assertExists()
             assertThat(MENU_HINT).doesNotContain("←")
         }
     }
