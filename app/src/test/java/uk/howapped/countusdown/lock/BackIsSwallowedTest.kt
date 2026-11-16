@@ -2,6 +2,10 @@ package uk.howapped.countusdown.lock
 
 import android.view.KeyEvent
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import uk.howapped.countusdown.ui.arrowTag
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ApplicationProvider
 import org.robolectric.Shadows
@@ -42,6 +46,21 @@ class BackIsSwallowedTest {
             compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_CENTER))
         }
         assertThat(compose.activity.parentMenuOpen).isFalse()
+        assertThat(compose.activity.unlockOpen).isFalse()
+    }
+
+    @Test fun holdingOkOpensTheCodeScreenAndTheCodeOpensTheFullMenu() {
+        compose.runOnUiThread {
+            val down = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_CENTER)
+            compose.activity.dispatchKeyEvent(down)
+            compose.activity.dispatchKeyEvent(KeyEvent.changeTimeRepeat(down, down.eventTime + 600, 1))
+        }
+        compose.waitForIdle()
+        assertThat(compose.activity.unlockOpen).isTrue()
+        assertThat(compose.activity.parentMenuOpen).isFalse()
+        LockStore.DEFAULT_CODE.forEach { compose.onNodeWithTag(arrowTag(it)).performClick() }
+        assertThat(compose.activity.parentMenuOpen).isTrue()
+        compose.onNodeWithText("Change unlock code").assertExists()
     }
 }
 
