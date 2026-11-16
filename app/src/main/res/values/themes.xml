@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The takeover's window is see-through, so whatever is on the TV stays visible while night
+         blue slowly covers it. No window animation: the fade is the animation. -->
+    <style name="Theme.CountUsDown.Takeover" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+</resources>
