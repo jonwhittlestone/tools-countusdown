@@ -16,16 +16,35 @@ import uk.howapped.countusdown.core.Schedule
 class PresetStoreTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    @Test fun firstUseSeedsSchoolRunAndFootball() {
+    @Test fun firstUseSeedsSchoolRunAndTheTwoLeaveTheHousePresets() {
         val presets = PresetStore(context).all()
-        assertThat(presets.map { it.preset.name }).containsExactly("School run", "Football").inOrder()
+        assertThat(presets.map { it.preset.name })
+            .containsExactly("School run", "Leave the house : 30m", "Leave the house : 5s").inOrder()
         val school = presets.first()
         assertThat(school.preset.durationMinutes).isEqualTo(30)
         assertThat(school.preset.graceMinutes).isEqualTo(5)
         assertThat(school.schedule).isEqualTo(Schedule(Schedule.WEEKDAYS, LocalTime.of(7, 45)))
-        val football = presets.last()
-        assertThat(football.preset.durationMinutes).isEqualTo(5)
-        assertThat(football.schedule).isNull()
+        val thirty = presets[1]
+        assertThat(thirty.preset.durationMinutes).isEqualTo(30)
+        assertThat(thirty.schedule).isNull()
+        val test = presets[2]
+        assertThat(test.preset.durationMinutes).isEqualTo(Preset.FIVE_SECONDS)
+        assertThat(test.preset.graceMinutes).isEqualTo(0)
+        assertThat(test.schedule).isNull()
+        assertThat(presets.map { PresetStore.canDelete(it) }).containsExactly(false, false, false)
+    }
+
+    @Test fun existingInstallsSwapAnUntouchedFootballForTheNewPresets() {
+        // What the TVs saved before: School run and the original Football seed.
+        val football = StoredPreset(Preset("football", "Football", 5, 0), null)
+        PresetStore(context).save(listOf(PresetStore.SEEDS.first(), football))
+        assertThat(PresetStore(context).all()).isEqualTo(PresetStore.SEEDS)
+    }
+
+    @Test fun anEditedFootballIsKept() {
+        val football = StoredPreset(Preset("football", "Football", 10, 2), null)
+        PresetStore(context).save(listOf(PresetStore.SEEDS.first(), football))
+        assertThat(PresetStore(context).all()).contains(football)
     }
 
     @Test fun editsSurviveANewStore() {
@@ -48,7 +67,7 @@ class PresetStoreTest {
     @Test fun aNewPresetGetsAFreshIdAndAnUnusedName() {
         val added = PresetStore.newPreset(PresetStore.SEEDS)
         assertThat(added.preset.id).isNotIn(PresetStore.SEEDS.map { it.preset.id })
-        assertThat(added.preset.name).isEqualTo(PresetStore.NAME_CHOICES.first())
+        assertThat(added.preset.name).isEqualTo("Leave the house")
         assertThat(added.preset.durationMinutes).isEqualTo(10)
         assertThat(added.schedule).isNull()
         val second = PresetStore.newPreset(PresetStore.SEEDS + added)
@@ -65,8 +84,11 @@ class PresetStoreTest {
         assertThat(PresetStore.canDelete(PresetStore.SEEDS.first())).isFalse()
     }
 
-    @Test fun theFirstNameOfferedIsLeaveTheHouse() {
-        assertThat(PresetStore.NAME_CHOICES.first()).isEqualTo("Leave the house")
-        assertThat(PresetStore.newPreset(PresetStore.SEEDS).preset.name).isEqualTo("Leave the house")
+    @Test fun newPresetsAreCalledLeaveTheHouseNumberedFromTheSecond() {
+        val first = PresetStore.newPreset(PresetStore.SEEDS)
+        val second = PresetStore.newPreset(PresetStore.SEEDS + first)
+        val third = PresetStore.newPreset(PresetStore.SEEDS + first + second)
+        assertThat(listOf(first, second, third).map { it.preset.name })
+            .containsExactly("Leave the house", "Leave the house 2", "Leave the house 3").inOrder()
     }
 }

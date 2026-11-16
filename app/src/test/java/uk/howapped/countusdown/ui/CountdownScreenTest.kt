@@ -49,6 +49,12 @@ class CountdownScreenTest {
         compose.onNodeWithText("minute").assertExists()
     }
 
+    @Test fun theFiveSecondTestCountsInSeconds() {
+        compose.setContent { CountdownScreen(CountdownUiState(Phase.CALM, 1, 0.6f, "09:00", secondsLeft = 3)) }
+        compose.onNodeWithText("3").assertExists()
+        compose.onNodeWithText("seconds").assertExists()
+    }
+
     @Test fun graceAndLateSayTimeToGo() {
         compose.setContent { CountdownScreen(CountdownUiState(Phase.GRACE, 0, 0f, "08:15")) }
         compose.onNodeWithText("Time to go").assertExists()
