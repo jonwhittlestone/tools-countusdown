@@ -44,4 +44,24 @@ class PresetStoreTest {
         val odd = StoredPreset(Preset("x", "Odd", durationMinutes = 7, graceMinutes = 0), null)
         assertThrows(IllegalArgumentException::class.java) { PresetStore(context).save(listOf(odd)) }
     }
+
+    @Test fun aNewPresetGetsAFreshIdAndAnUnusedName() {
+        val added = PresetStore.newPreset(PresetStore.SEEDS)
+        assertThat(added.preset.id).isNotIn(PresetStore.SEEDS.map { it.preset.id })
+        assertThat(added.preset.name).isEqualTo(PresetStore.NAME_CHOICES.first())
+        assertThat(added.preset.durationMinutes).isEqualTo(10)
+        assertThat(added.schedule).isNull()
+        val second = PresetStore.newPreset(PresetStore.SEEDS + added)
+        assertThat(second.preset.id).isNotEqualTo(added.preset.id)
+        assertThat(second.preset.name).isNotEqualTo(added.preset.name)
+    }
+
+    @Test fun addedPresetsAreSavedAndOnlyTheyCanBeDeleted() {
+        val store = PresetStore(context)
+        val added = PresetStore.newPreset(store.all())
+        store.save(store.all() + added)
+        assertThat(PresetStore(context).byId(added.preset.id)).isEqualTo(added)
+        assertThat(PresetStore.canDelete(added)).isTrue()
+        assertThat(PresetStore.canDelete(PresetStore.SEEDS.first())).isFalse()
+    }
 }
