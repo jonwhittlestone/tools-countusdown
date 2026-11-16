@@ -16,6 +16,8 @@ import uk.howapped.countusdown.core.activeStart
 import uk.howapped.countusdown.core.nextStart
 import uk.howapped.countusdown.presets.PresetStore
 import uk.howapped.countusdown.presets.StoredPreset
+import uk.howapped.countusdown.setup.OverlaySetup
+import uk.howapped.countusdown.setup.StartMode
 
 /**
  * Starting countdowns by the clock: arms an exact alarm for the earliest next start of any
@@ -40,6 +42,8 @@ object Runs {
 
     /** The next scheduled start across all presets: what the alarm is armed for. */
     fun next(context: Context, clock: Clock): Pair<StoredPreset, Instant>? {
+        // "Only when I start it": no timed starts at all (design doc 03.15).
+        if (OverlaySetup.mode(context) == StartMode.MANUAL) return null
         val now = Instant.now(clock)
         val skip = skipDates(context)
         return PresetStore(context).all()
@@ -63,6 +67,7 @@ object Runs {
 
     /** The scheduled run going on right now, if any (e.g. after a reboot at 07:50). */
     fun active(context: Context, clock: Clock): Countdown? {
+        if (OverlaySetup.mode(context) == StartMode.MANUAL) return null
         val now = Instant.now(clock)
         val skip = skipDates(context)
         return PresetStore(context).all().firstNotNullOfOrNull { p ->

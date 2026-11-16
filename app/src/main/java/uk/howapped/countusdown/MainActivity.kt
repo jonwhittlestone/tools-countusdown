@@ -38,8 +38,10 @@ import uk.howapped.countusdown.lock.Pad
 import uk.howapped.countusdown.presets.PresetStore
 import uk.howapped.countusdown.schedule.Runs
 import uk.howapped.countusdown.setup.OverlaySetup
+import uk.howapped.countusdown.setup.StartMode
 import uk.howapped.countusdown.ui.CodeEntry
 import uk.howapped.countusdown.ui.OverlaySetupScreen
+import uk.howapped.countusdown.ui.StartChoiceScreen
 import uk.howapped.countusdown.ui.CountdownScreen
 import uk.howapped.countusdown.ui.IdleScreen
 import uk.howapped.countusdown.ui.MenuItem
@@ -62,7 +64,7 @@ class MainActivity : ComponentActivity() {
     /** Bumped when the takeover hands over: the countdown fades in from night blue. */
     private var fadeIns by mutableIntStateOf(0)
 
-    private enum class Overlay { NONE, MENU, EDITOR, CODE, SETUP }
+    private enum class Overlay { NONE, MENU, EDITOR, CODE, CHOICE, PERMISSION }
     private var overlay by mutableStateOf(Overlay.NONE)
 
     /** True while the parent menu (opened by the D-pad code) is showing. */
@@ -95,7 +97,7 @@ class MainActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 when {
-                    overlay == Overlay.SETUP -> notNow()
+                    overlay.isWizard -> notNow()
                     overlay != Overlay.NONE -> overlay = Overlay.NONE
                     countdown == null -> finish()
                 }
@@ -158,7 +160,19 @@ class MainActivity : ComponentActivity() {
                 },
                 onCancel = { overlay = Overlay.NONE },
             )
-            Overlay.SETUP -> OverlaySetupScreen(onOpenSettings = { OverlaySetup.open(this) }, onNotNow = ::notNow)
+            Overlay.CHOICE -> StartChoiceScreen(
+                onAutomatic = {
+                    OverlaySetup.setMode(this, StartMode.AUTO)
+                    Runs.arm(this, clock)
+                    overlay = if (OverlaySetup.allowed(this)) Overlay.NONE else Overlay.PERMISSION
+                },
+                onManual = {
+                    OverlaySetup.setMode(this, StartMode.MANUAL)
+                    Runs.arm(this, clock) // cancels the timed start
+                    overlay = Overlay.NONE
+                },
+            )
+            Overlay.PERMISSION -> OverlaySetupScreen(onOpenSettings = { OverlaySetup.open(this) }, onNotNow = ::notNow)
             Overlay.NONE -> Unit
         }
     }
@@ -166,9 +180,15 @@ class MainActivity : ComponentActivity() {
     /** Every return to the app (including back from Settings) re-checks the setup wizard. */
     override fun onResume() {
         super.onResume()
-        val needed = OverlaySetup.needsSetup(OverlaySetup.allowed(this), countdown != null, setupDismissed)
-        if (needed && overlay == Overlay.NONE) overlay = Overlay.SETUP
-        if (!needed && overlay == Overlay.SETUP) overlay = Overlay.NONE
+        if (overlay != Overlay.NONE && !overlay.isWizard) return
+        val step = OverlaySetup.stepFor(OverlaySetup.mode(this), OverlaySetup.allowed(this), countdown != null, setupDismissed)
+        // "Change how it starts" from the menu shows the choice even when nothing is needed.
+        if (overlay == Overlay.CHOICE && step == OverlaySetup.Step.NONE) return
+        overlay = when (step) {
+            OverlaySetup.Step.CHOICE -> Overlay.CHOICE
+            OverlaySetup.Step.PERMISSION -> Overlay.PERMISSION
+            OverlaySetup.Step.NONE -> Overlay.NONE
+        }
     }
 
     private fun notNow() {
@@ -227,16 +247,19 @@ class MainActivity : ComponentActivity() {
                 start(Countdown(p.preset, Instant.now(clock)))
             })
         }
-        if (!OverlaySetup.allowed(this@MainActivity)) {
-            add(MenuItem("Set up display over other apps") { overlay = Overlay.SETUP })
-        }
+        add(MenuItem("Change how it starts") {
+            setupDismissed = false
+            overlay = Overlay.CHOICE
+        })
         add(MenuItem("Edit presets") { overlay = Overlay.EDITOR })
         add(MenuItem("Change unlock code") { overlay = Overlay.CODE })
         add(MenuItem("Close menu") { overlay = Overlay.NONE })
     }
 
     /** "Next: School run · Mon 07:45" for the idle screen. */
-    private fun nextLabel(): String? = Runs.next(this, clock)?.let { (p, at) ->
+    private fun nextLabel(): String? = if (OverlaySetup.mode(this) == StartMode.MANUAL) {
+        "Enter the parent code to start a countdown"
+    } else Runs.next(this, clock)?.let { (p, at) ->
         "Next: ${p.preset.name} · ${NEXT.format(at.atZone(clock.zone))}"
     }
 
@@ -264,11 +287,13 @@ class MainActivity : ComponentActivity() {
 
     private fun start(next: Countdown) {
         exited = false
-        if (overlay == Overlay.SETUP) overlay = Overlay.NONE
+        if (overlay.isWizard) overlay = Overlay.NONE
         countdown = next
         // The service owns the audio; the activity only draws. Both work from the same startedAt.
         startForegroundService(CountdownService.intentFor(this, next))
     }
+
+    private val Overlay.isWizard: Boolean get() = this == Overlay.CHOICE || this == Overlay.PERMISSION
 
     companion object {
         private val NEXT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE HH:mm")
