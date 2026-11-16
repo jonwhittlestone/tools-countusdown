@@ -45,9 +45,9 @@ private fun <T> List<T>.step(current: T, by: Int): T = this[Math.floorMod(indexO
 
 /**
  * Editing presets with only a D-pad: up/down picks a row, left/right changes it, OK on Save.
- * "Add preset" makes a new one; its name is picked from a list (typing on a TV remote is
- * miserable), and only added presets can be renamed or deleted. Durations only offer values
- * the voice library has clips for.
+ * "Add preset" makes a new "Leave the house" preset (names are fixed: typing on a TV remote is
+ * miserable), and only added presets can be deleted. Durations only offer values the voice
+ * library has clips for, plus the 5-second test.
  */
 @Composable
 fun PresetEditor(presets: List<StoredPreset>, onSave: (List<StoredPreset>) -> Unit, onClose: () -> Unit) {
@@ -75,16 +75,8 @@ fun PresetEditor(presets: List<StoredPreset>, onSave: (List<StoredPreset>) -> Un
                 onLeft = { index = Math.floorMod(index - 1, working.size) },
                 onRight = { index = Math.floorMod(index + 1, working.size) },
             )
-            if (PresetStore.canDelete(current)) {
-                val names = (PresetStore.NAME_CHOICES + current.preset.name).distinct()
-                TvRow(
-                    "Name: ${current.preset.name}",
-                    onLeft = { withPreset { it.copy(name = names.step(it.name, -1)) } },
-                    onRight = { withPreset { it.copy(name = names.step(it.name, +1)) } },
-                )
-            }
             TvRow(
-                "Countdown: ${current.preset.durationMinutes} min",
+                "Countdown: ${if (current.preset.isTest) "5 s (test)" else current.preset.lengthLabel}",
                 onLeft = { withPreset { it.copy(durationMinutes = Preset.ALLOWED_DURATIONS.step(it.durationMinutes, -1)) } },
                 onRight = { withPreset { it.copy(durationMinutes = Preset.ALLOWED_DURATIONS.step(it.durationMinutes, +1)) } },
             )

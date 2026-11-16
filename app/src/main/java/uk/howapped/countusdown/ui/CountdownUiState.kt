@@ -16,6 +16,8 @@ data class CountdownUiState(
     val fractionLeft: Float,
     /** The target as a wall-clock time, e.g. "08:15". */
     val leaveAt: String,
+    /** Whole seconds left, rounded up, for the 5-second test only; null for a normal run. */
+    val secondsLeft: Int? = null,
 )
 
 private val HH_MM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -23,10 +25,12 @@ private val HH_MM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 fun Countdown.uiStateAt(now: Instant, zone: ZoneId): CountdownUiState {
     val total = Duration.between(startedAt, target).seconds.toFloat()
     val left = Duration.between(now, target).seconds.coerceIn(0, total.toLong())
+    val leftMs = Duration.between(now, target).toMillis().coerceAtLeast(0)
     return CountdownUiState(
         phase = phaseAt(now),
         minutesLeft = ((left + 59) / 60).toInt(),
         fractionLeft = if (total > 0) left / total else 0f,
         leaveAt = HH_MM.format(target.atZone(zone)),
+        secondsLeft = if (preset.isTest) ((leftMs + 999) / 1000).toInt() else null,
     )
 }

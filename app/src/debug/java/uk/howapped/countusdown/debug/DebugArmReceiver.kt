@@ -12,7 +12,7 @@ import uk.howapped.countusdown.schedule.StartReceiver
 
 /**
  * Debug builds only. Arms the same exact alarm the 07:45 schedule uses, but N seconds from now:
- *   adb shell am broadcast -a uk.howapped.countusdown.DEBUG_ARM -p uk.howapped.countusdown --ei in_seconds 60 [--es preset_id football]
+ *   adb shell am broadcast -a uk.howapped.countusdown.DEBUG_ARM -p uk.howapped.countusdown --ei in_seconds 60 [--es preset_id leave-5s]
  */
 class DebugArmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {

@@ -6,7 +6,7 @@ A calm "leave the house" countdown for Android TV. At 07:45 on weekdays it takes
 
 ## What it does
 
-- **Starts itself** at a preset's scheduled time (School run: weekdays 07:45), waking the TV out of its ambient screensaver. Presets without a schedule (Football) are started from the parent menu.
+- **Starts itself** at a preset's scheduled time (School run: weekdays 07:45), waking the TV out of its ambient screensaver. Presets without a schedule ("Leave the house : 30m", and the 5-second test "Leave the house : 5s") are started from the menu.
 - **Shows** whole minutes left inside a slowly draining ring, plus "leave at 08:15". The numeral breathes with a 4 s pulse, and nothing changes faster than once a minute. The background drifts from night blue to dusk, turns amber during the grace period, and dims when late.
 - **Speaks** calm cues in four rotating stock voices (3 × Kokoro British + Chatterbox) at T-30, 25, 20, 15, 10, then every minute for the last five, then "time to leave" and "we're late". The wording firms up (gentle → nudge → firm) but the volume never rises.
 - **Soundscape:** a synthesised ambient bed that thickens from 1 to 3 layers as the target nears and goes silent when late.

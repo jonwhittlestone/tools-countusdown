@@ -24,7 +24,8 @@ fun tierFor(minutesLeft: Int): Tier = when {
 fun Countdown.cues(): List<Cue> {
     val duration = preset.durationMinutes
     // Always announce the full duration first, even when it isn't a standard mark (e.g. 45).
-    val marks = (listOf(duration) + STANDARD_MARKS.filter { it < duration })
+    // The 5-second test has no minute marks: there are no clips below one minute.
+    val marks = if (preset.isTest) emptyList() else listOf(duration) + STANDARD_MARKS.filter { it < duration }
     val minuteCues = marks.map { m ->
         Cue(target.minus(Duration.ofMinutes(m.toLong())), CueKind.MINUTES, m, tierFor(m))
     }
