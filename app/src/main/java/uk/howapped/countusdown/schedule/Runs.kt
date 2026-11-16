@@ -8,7 +8,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import uk.howapped.countusdown.AppClock
-import uk.howapped.countusdown.MainActivity
+import uk.howapped.countusdown.TakeoverActivity
 import uk.howapped.countusdown.audio.CountdownService
 import uk.howapped.countusdown.audio.CountdownService.Companion.putCountdown
 import uk.howapped.countusdown.core.Countdown
@@ -76,13 +76,16 @@ object Runs {
         return PresetStore(context).all().any { it.schedule?.days?.contains(today) == true }
     }
 
-    /** Starts the audio and brings the countdown screen to the front. */
+    /**
+     * Starts the audio and brings the countdown to the front, slowly: the takeover screen fades
+     * in over whatever is on the TV first, then hands over to the countdown.
+     */
     fun launch(context: Context, countdown: Countdown) {
         context.startForegroundService(CountdownService.intentFor(context, countdown))
         context.startActivity(
-            Intent(context, MainActivity::class.java)
+            Intent(context, TakeoverActivity::class.java)
                 .putCountdown(countdown)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
     }
 

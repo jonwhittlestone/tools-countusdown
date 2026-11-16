@@ -46,6 +46,16 @@
             </intent-filter>
         </activity>
 
+        <!-- The slow fade when a scheduled run takes the screen. Its own task (taskAffinity), so it
+             opens over the app on screen rather than bringing COUNT-US-DOWN's task forward first. -->
+        <activity
+            android:name=".TakeoverActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="uk.howapped.countusdown.takeover"
+            android:theme="@style/Theme.CountUsDown.Takeover" />
+
         <receiver
             android:name=".schedule.StartReceiver"
             android:exported="false">

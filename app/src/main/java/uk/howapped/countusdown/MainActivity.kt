@@ -8,6 +8,17 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
+import uk.howapped.countusdown.ui.Night
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.Modifier
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +56,9 @@ import uk.howapped.countusdown.ui.uiStateAt
 class MainActivity : ComponentActivity() {
     private val clock: Clock get() = AppClock.clock
     private var countdown by mutableStateOf<Countdown?>(null)
+
+    /** Bumped when the takeover hands over: the countdown fades in from night blue. */
+    private var fadeIns by mutableIntStateOf(0)
 
     private enum class Overlay { NONE, MENU, EDITOR, CODE }
     private var overlay by mutableStateOf(Overlay.NONE)
@@ -85,45 +99,60 @@ class MainActivity : ComponentActivity() {
         // Opening the app is a good moment to make sure the next alarm is armed.
         Runs.arm(this, clock)
         resolve(intent)?.let(::start)
+        if (intent.getBooleanExtra(EXTRA_FADE_IN, false)) fadeIns++
 
         setContent {
-            val current = countdown
-            if (current == null) {
-                IdleScreen(nextLabel())
-            } else {
-                var now by remember { mutableStateOf(Instant.now(clock)) }
-                LaunchedEffect(current) {
-                    while (true) {
-                        now = Instant.now(clock)
-                        delay(1000)
-                    }
+            val shown = remember { Animatable(if (fadeIns > 0) 0f else 1f) }
+            LaunchedEffect(fadeIns) {
+                if (fadeIns > 0) {
+                    shown.snapTo(0f)
+                    shown.animateTo(1f, tween(FADE_IN_MS, easing = FastOutSlowInEasing))
                 }
-                val state = current.uiStateAt(now, clock.zone)
-                // Once the run is over, hand the TV back.
-                LaunchedEffect(state.phase) { if (state.phase == Phase.DONE) finish() }
-                CountdownScreen(state)
             }
-            when (overlay) {
-                Overlay.MENU -> ParentMenu(parentMenuItems(), onDismiss = { overlay = Overlay.NONE })
-                Overlay.EDITOR -> PresetEditor(
-                    PresetStore(this).all(),
-                    onSave = {
-                        PresetStore(this).save(it)
-                        Runs.arm(this, clock)
-                        overlay = Overlay.NONE
-                    },
-                    onClose = { overlay = Overlay.NONE },
-                )
-                Overlay.CODE -> CodeEntry(
-                    onDone = {
-                        LockStore.setCode(this, it)
-                        matcher = CodeMatcher(it)
-                        overlay = Overlay.NONE
-                    },
-                    onCancel = { overlay = Overlay.NONE },
-                )
-                Overlay.NONE -> Unit
+            Box(Modifier.fillMaxSize().background(Night)) {
+                Box(Modifier.fillMaxSize().graphicsLayer { alpha = shown.value }) { Screens() }
             }
+        }
+    }
+
+    @Composable
+    private fun Screens() {
+        val current = countdown
+        if (current == null) {
+            IdleScreen(nextLabel())
+        } else {
+            var now by remember { mutableStateOf(Instant.now(clock)) }
+            LaunchedEffect(current) {
+                while (true) {
+                    now = Instant.now(clock)
+                    delay(1000)
+                }
+            }
+            val state = current.uiStateAt(now, clock.zone)
+            // Once the run is over, hand the TV back.
+            LaunchedEffect(state.phase) { if (state.phase == Phase.DONE) finish() }
+            CountdownScreen(state)
+        }
+        when (overlay) {
+            Overlay.MENU -> ParentMenu(parentMenuItems(), onDismiss = { overlay = Overlay.NONE })
+            Overlay.EDITOR -> PresetEditor(
+                PresetStore(this).all(),
+                onSave = {
+                    PresetStore(this).save(it)
+                    Runs.arm(this, clock)
+                    overlay = Overlay.NONE
+                },
+                onClose = { overlay = Overlay.NONE },
+            )
+            Overlay.CODE -> CodeEntry(
+                onDone = {
+                    LockStore.setCode(this, it)
+                    matcher = CodeMatcher(it)
+                    overlay = Overlay.NONE
+                },
+                onCancel = { overlay = Overlay.NONE },
+            )
+            Overlay.NONE -> Unit
         }
     }
 
@@ -131,6 +160,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         CountdownService.countdownFrom(intent)?.let(::start)
+        if (intent.getBooleanExtra(EXTRA_FADE_IN, false)) fadeIns++
     }
 
     /** Left mid-run without the code (Home on the remote): ask the service to bring us back. */
@@ -224,5 +254,8 @@ class MainActivity : ComponentActivity() {
         )
         const val EXTRA_DURATION = "duration_minutes"
         const val EXTRA_GRACE = "grace_minutes"
+        /** Set by the takeover screen: fade the countdown in rather than cutting to it. */
+        const val EXTRA_FADE_IN = "fade_in"
+        private const val FADE_IN_MS = 1500
     }
 }
