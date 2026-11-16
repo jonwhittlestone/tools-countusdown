@@ -64,4 +64,9 @@ class PresetStoreTest {
         assertThat(PresetStore.canDelete(added)).isTrue()
         assertThat(PresetStore.canDelete(PresetStore.SEEDS.first())).isFalse()
     }
+
+    @Test fun theFirstNameOfferedIsLeaveTheHouse() {
+        assertThat(PresetStore.NAME_CHOICES.first()).isEqualTo("Leave the house")
+        assertThat(PresetStore.newPreset(PresetStore.SEEDS).preset.name).isEqualTo("Leave the house")
+    }
 }
