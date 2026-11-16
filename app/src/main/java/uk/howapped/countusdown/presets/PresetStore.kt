@@ -63,6 +63,23 @@ class PresetStore(private val context: Context) {
         private const val KEY = "presets"
         const val MAX_GRACE = 15
 
+        /** Names for added presets, picked with left/right (typing on a TV remote is miserable). */
+        val NAME_CHOICES = listOf(
+            "Swimming", "Park", "Bedtime", "Getting dressed", "Screens off", "Shopping", "Visiting", "Music lesson",
+        )
+
+        /** A new 10-minute preset that starts by hand, with an id and name nobody else has. */
+        fun newPreset(existing: List<StoredPreset>): StoredPreset {
+            val ids = existing.map { it.preset.id }.toSet()
+            val n = generateSequence(1) { it + 1 }.first { "custom-$it" !in ids }
+            val used = existing.map { it.preset.name }.toSet()
+            val name = NAME_CHOICES.firstOrNull { it !in used } ?: "Preset $n"
+            return StoredPreset(Preset("custom-$n", name, 10, 0), schedule = null)
+        }
+
+        /** School run and Football always stay; anything added can go. */
+        fun canDelete(p: StoredPreset): Boolean = SEEDS.none { it.preset.id == p.preset.id }
+
         val SEEDS = listOf(
             StoredPreset(Preset("school", "School run", 30, 5), Schedule(Schedule.WEEKDAYS, LocalTime.of(7, 45))),
             StoredPreset(Preset("football", "Football", 5, 0), schedule = null),

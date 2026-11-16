@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,8 +45,9 @@ private fun <T> List<T>.step(current: T, by: Int): T = this[Math.floorMod(indexO
 
 /**
  * Editing presets with only a D-pad: up/down picks a row, left/right changes it, OK on Save.
- * Names are fixed (typing on a TV remote is miserable); durations only offer values the
- * voice library has clips for.
+ * "Add preset" makes a new one; its name is picked from a list (typing on a TV remote is
+ * miserable), and only added presets can be renamed or deleted. Durations only offer values
+ * the voice library has clips for.
  */
 @Composable
 fun PresetEditor(presets: List<StoredPreset>, onSave: (List<StoredPreset>) -> Unit, onClose: () -> Unit) {
@@ -59,13 +63,26 @@ fun PresetEditor(presets: List<StoredPreset>, onSave: (List<StoredPreset>) -> Un
     fun withPreset(change: (Preset) -> Preset) = update { it.copy(preset = change(it.preset)) }
 
     Box(Modifier.fillMaxSize().background(Color(0xF0000000)), contentAlignment = Alignment.Center) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        // Scrolls, because an added preset has extra rows; focus moving down brings rows into view.
+        Column(
+            Modifier.verticalScroll(rememberScrollState()).padding(vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             BasicText("Edit presets", style = TextStyle(color = Mist, fontSize = 28.sp))
             TvRow(
                 "Preset: ${current.preset.name}", Modifier.focusRequester(first),
                 onLeft = { index = Math.floorMod(index - 1, working.size) },
                 onRight = { index = Math.floorMod(index + 1, working.size) },
             )
+            if (PresetStore.canDelete(current)) {
+                val names = (PresetStore.NAME_CHOICES + current.preset.name).distinct()
+                TvRow(
+                    "Name: ${current.preset.name}",
+                    onLeft = { withPreset { it.copy(name = names.step(it.name, -1)) } },
+                    onRight = { withPreset { it.copy(name = names.step(it.name, +1)) } },
+                )
+            }
             TvRow(
                 "Countdown: ${current.preset.durationMinutes} min",
                 onLeft = { withPreset { it.copy(durationMinutes = Preset.ALLOWED_DURATIONS.step(it.durationMinutes, -1)) } },
@@ -89,6 +106,16 @@ fun PresetEditor(presets: List<StoredPreset>, onSave: (List<StoredPreset>) -> Un
                     onLeft = { update { it.copy(schedule = s.copy(start = s.start.minusMinutes(5))) } },
                     onRight = { update { it.copy(schedule = s.copy(start = s.start.plusMinutes(5))) } },
                 )
+            }
+            TvRow("Add preset", onSelect = {
+                working = working + PresetStore.newPreset(working)
+                index = working.lastIndex
+            })
+            if (PresetStore.canDelete(current)) {
+                TvRow("Delete this preset", onSelect = {
+                    working = working.filterIndexed { i, _ -> i != index }
+                    index = index.coerceAtMost(working.lastIndex)
+                })
             }
             TvRow("Save", onSelect = { onSave(working) })
             TvRow("Cancel", onSelect = onClose)
