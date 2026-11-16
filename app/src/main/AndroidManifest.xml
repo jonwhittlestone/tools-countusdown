@@ -13,8 +13,9 @@
         android:maxSdkVersion="32" />
     <!-- Re-arm the alarm after a reboot, and resume a run that was in progress. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Lets the countdown come to the front from the background (Android 10+). Granted once
-         over adb by `make tv-grant`, because Google TV has no settings screen for it. -->
+    <!-- "Display over other apps": lets the countdown come to the front from the background
+         (Android 10+). The setup wizard takes the user to Settings for it; `make grant` sets it
+         over adb during development. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- Built for Android TV, but installable on a phone for development. -->

@@ -7,6 +7,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
+import org.junit.rules.ExternalResource
+import org.robolectric.shadows.ShadowSettings
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -38,7 +40,12 @@ class ScaffoldTest {
 @RunWith(AndroidJUnit4::class)
 class IdleTest {
     @get:Rule(order = 0) val clock = FixedClockRule(FixedClockRule.SATURDAY)
-    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
+    // Already set up, so the one-time wizard stays out of the way.
+    @get:Rule(order = 1) val allowed = object : ExternalResource() {
+        override fun before() = ShadowSettings.setCanDrawOverlays(true)
+        override fun after() = ShadowSettings.setCanDrawOverlays(false)
+    }
+    @get:Rule(order = 2) val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
     fun showsTheNextScheduledRunAndNoCountdown() {
@@ -50,5 +57,24 @@ class IdleTest {
     fun backLeavesTheIdleScreen() {
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         assertThat(compose.activity.isFinishing).isTrue()
+    }
+}
+
+@RunWith(AndroidJUnit4::class)
+class SetupWizardTest {
+    @get:Rule(order = 0) val clock = FixedClockRule(FixedClockRule.SATURDAY)
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun opensWithTheWizardUntilDisplayOverOtherAppsIsOn() {
+        compose.onNodeWithText("Allow COUNT-US-DOWN to display over other apps").assertExists()
+    }
+
+    @Test
+    fun backMeansNotNowAndShowsTheIdleScreen() {
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.onNodeWithText("Allow COUNT-US-DOWN to display over other apps").assertDoesNotExist()
+        compose.onNodeWithText("Next: School run · Mon 07:45").assertExists()
+        assertThat(compose.activity.isFinishing).isFalse()
     }
 }

@@ -138,7 +138,7 @@ install: build ## Build and install the debug APK (and grant what Google TV has 
 
 .PHONY: grant
 # Android 14 only lets an app bring itself to the front from the background (the 07:45 alarm)
-# if it may "display over other apps"; Google TV has no settings screen to allow that.
+# if it may "display over other apps". The app's setup wizard asks for it; this skips the wizard.
 grant: ## Allow the app to come to the front by itself (needed for the scheduled start)
 	$(ADB) shell appops set $(APP_ID) SYSTEM_ALERT_WINDOW allow
 	@$(ADB) shell appops get $(APP_ID) SYSTEM_ALERT_WINDOW

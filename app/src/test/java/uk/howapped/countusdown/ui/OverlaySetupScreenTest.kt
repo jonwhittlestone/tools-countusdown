@@ -3,6 +3,7 @@ package uk.howapped.countusdown.ui
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
@@ -20,9 +21,9 @@ class OverlaySetupScreenTest {
         compose.onNodeWithText("Allow COUNT-US-DOWN to display over other apps").assertExists()
         compose.onNodeWithText("2.  Find COUNT-US-DOWN in the list and select it").assertExists()
         compose.onNodeWithText("3.  Switch on “Display over other apps”").assertExists()
-        compose.onNodeWithText("Open settings").performClick()
+        compose.onNodeWithText("Open settings").performScrollTo().performClick()
         assertThat(opened).isTrue()
-        compose.onNodeWithText("Not now").performClick()
+        compose.onNodeWithText("Not now").performScrollTo().performClick()
         assertThat(later).isTrue()
     }
 }

@@ -37,7 +37,9 @@ import uk.howapped.countusdown.lock.LockStore
 import uk.howapped.countusdown.lock.Pad
 import uk.howapped.countusdown.presets.PresetStore
 import uk.howapped.countusdown.schedule.Runs
+import uk.howapped.countusdown.setup.OverlaySetup
 import uk.howapped.countusdown.ui.CodeEntry
+import uk.howapped.countusdown.ui.OverlaySetupScreen
 import uk.howapped.countusdown.ui.CountdownScreen
 import uk.howapped.countusdown.ui.IdleScreen
 import uk.howapped.countusdown.ui.MenuItem
@@ -60,13 +62,16 @@ class MainActivity : ComponentActivity() {
     /** Bumped when the takeover hands over: the countdown fades in from night blue. */
     private var fadeIns by mutableIntStateOf(0)
 
-    private enum class Overlay { NONE, MENU, EDITOR, CODE }
+    private enum class Overlay { NONE, MENU, EDITOR, CODE, SETUP }
     private var overlay by mutableStateOf(Overlay.NONE)
 
     /** True while the parent menu (opened by the D-pad code) is showing. */
     val parentMenuOpen: Boolean get() = overlay == Overlay.MENU
 
     private var matcher = CodeMatcher(LockStore.DEFAULT_CODE)
+
+    /** "Not now" on the setup wizard: don't ask again until the app is next opened. */
+    private var setupDismissed = false
 
     /** Set when a parent exits with the code: the countdown must not bounce back. */
     private var exited = false
@@ -90,6 +95,7 @@ class MainActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 when {
+                    overlay == Overlay.SETUP -> notNow()
                     overlay != Overlay.NONE -> overlay = Overlay.NONE
                     countdown == null -> finish()
                 }
@@ -152,8 +158,22 @@ class MainActivity : ComponentActivity() {
                 },
                 onCancel = { overlay = Overlay.NONE },
             )
+            Overlay.SETUP -> OverlaySetupScreen(onOpenSettings = { OverlaySetup.open(this) }, onNotNow = ::notNow)
             Overlay.NONE -> Unit
         }
+    }
+
+    /** Every return to the app (including back from Settings) re-checks the setup wizard. */
+    override fun onResume() {
+        super.onResume()
+        val needed = OverlaySetup.needsSetup(OverlaySetup.allowed(this), countdown != null, setupDismissed)
+        if (needed && overlay == Overlay.NONE) overlay = Overlay.SETUP
+        if (!needed && overlay == Overlay.SETUP) overlay = Overlay.NONE
+    }
+
+    private fun notNow() {
+        setupDismissed = true
+        overlay = Overlay.NONE
     }
 
     /** The 07:45 alarm can arrive while a manual run is showing: the new run replaces it. */
@@ -207,6 +227,9 @@ class MainActivity : ComponentActivity() {
                 start(Countdown(p.preset, Instant.now(clock)))
             })
         }
+        if (!OverlaySetup.allowed(this@MainActivity)) {
+            add(MenuItem("Set up display over other apps") { overlay = Overlay.SETUP })
+        }
         add(MenuItem("Edit presets") { overlay = Overlay.EDITOR })
         add(MenuItem("Change unlock code") { overlay = Overlay.CODE })
         add(MenuItem("Close menu") { overlay = Overlay.NONE })
@@ -241,6 +264,7 @@ class MainActivity : ComponentActivity() {
 
     private fun start(next: Countdown) {
         exited = false
+        if (overlay == Overlay.SETUP) overlay = Overlay.NONE
         countdown = next
         // The service owns the audio; the activity only draws. Both work from the same startedAt.
         startForegroundService(CountdownService.intentFor(this, next))
