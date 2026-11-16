@@ -67,6 +67,9 @@ class MainActivity : ComponentActivity() {
     private enum class Overlay { NONE, MENU, EDITOR, CODE, CHOICE, PERMISSION }
     private var overlay by mutableStateOf(Overlay.NONE)
 
+    /** True when the menu was opened with the code: only then can the code or today's run change. */
+    private var menuUnlocked = false
+
     /** True while the parent menu (opened by the D-pad code) is showing. */
     val parentMenuOpen: Boolean get() = overlay == Overlay.MENU
 
@@ -127,7 +130,7 @@ class MainActivity : ComponentActivity() {
     private fun Screens() {
         val current = countdown
         if (current == null) {
-            IdleScreen(nextLabel())
+            IdleScreen(nextLabel(), onMenu = { openMenu(unlocked = false) })
         } else {
             var now by remember { mutableStateOf(Instant.now(clock)) }
             LaunchedEffect(current) {
@@ -219,9 +222,14 @@ class MainActivity : ComponentActivity() {
      */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (overlay != Overlay.NONE) return super.dispatchKeyEvent(event)
+        // Idle, there is no countdown to protect: OK opens the menu (without the lock-changing items).
+        if (countdown == null && event.keyCode in OK_KEYS) {
+            if (event.action == KeyEvent.ACTION_UP) openMenu(unlocked = false)
+            return true
+        }
         val pad = Pad.from(event.keyCode)
         if (pad != null) {
-            if (event.action == KeyEvent.ACTION_UP && matcher.feed(pad)) overlay = Overlay.MENU
+            if (event.action == KeyEvent.ACTION_UP && matcher.feed(pad)) openMenu(unlocked = true)
             return true
         }
         if (event.keyCode in SWALLOWED) return true
@@ -235,7 +243,7 @@ class MainActivity : ComponentActivity() {
             if (Runs.scheduledToday(this@MainActivity, clock)) {
                 add(MenuItem("Exit and skip today") { exit(skipToday = true) })
             }
-        } else if (Runs.scheduledToday(this@MainActivity, clock)) {
+        } else if (menuUnlocked && Runs.scheduledToday(this@MainActivity, clock)) {
             add(MenuItem("Skip today's countdown") {
                 Runs.skip(this@MainActivity, LocalDate.now(clock))
                 overlay = Overlay.NONE
@@ -252,7 +260,7 @@ class MainActivity : ComponentActivity() {
             overlay = Overlay.CHOICE
         })
         add(MenuItem("Edit presets") { overlay = Overlay.EDITOR })
-        add(MenuItem("Change unlock code") { overlay = Overlay.CODE })
+        if (menuUnlocked) add(MenuItem("Change unlock code") { overlay = Overlay.CODE })
         add(MenuItem("Close menu") { overlay = Overlay.NONE })
     }
 
@@ -293,10 +301,16 @@ class MainActivity : ComponentActivity() {
         startForegroundService(CountdownService.intentFor(this, next))
     }
 
+    private fun openMenu(unlocked: Boolean) {
+        menuUnlocked = unlocked
+        overlay = Overlay.MENU
+    }
+
     private val Overlay.isWizard: Boolean get() = this == Overlay.CHOICE || this == Overlay.PERMISSION
 
     companion object {
         private val NEXT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE HH:mm")
+        private val OK_KEYS = setOf(KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER)
         private val SWALLOWED = setOf(
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER,
             KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SEARCH,

@@ -35,6 +35,14 @@ class BackIsSwallowedTest {
         }
         assertThat(compose.activity.parentMenuOpen).isTrue()
     }
+
+    @Test fun okDoesNotOpenTheMenuDuringARun() {
+        compose.runOnUiThread {
+            compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_CENTER))
+            compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_CENTER))
+        }
+        assertThat(compose.activity.parentMenuOpen).isFalse()
+    }
 }
 
 @RunWith(AndroidJUnit4::class)

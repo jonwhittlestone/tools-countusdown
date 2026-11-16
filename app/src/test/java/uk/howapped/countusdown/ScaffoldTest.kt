@@ -1,6 +1,9 @@
 package uk.howapped.countusdown
 
 import android.content.Intent
+import android.view.KeyEvent
+import androidx.compose.ui.test.performClick
+import uk.howapped.countusdown.ui.IDLE_MENU_LABEL
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
@@ -57,6 +60,36 @@ class IdleTest {
     fun backLeavesTheIdleScreen() {
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         assertThat(compose.activity.isFinishing).isTrue()
+    }
+
+    @Test
+    fun theMenuButtonOpensTheMenuWithoutTheCode() {
+        compose.onNodeWithText(IDLE_MENU_LABEL).performClick()
+        compose.onNodeWithText("Change how it starts").assertExists()
+        // Anything that could undo the lock or the school run still needs the code.
+        compose.onNodeWithText("Change unlock code").assertDoesNotExist()
+        compose.onNodeWithText("Skip today's countdown").assertDoesNotExist()
+    }
+
+    @Test
+    fun okOnTheRemoteOpensTheMenuToo() {
+        compose.runOnUiThread {
+            compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_CENTER))
+            compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_CENTER))
+        }
+        assertThat(compose.activity.parentMenuOpen).isTrue()
+    }
+
+    @Test
+    fun theCodeOnTheIdleScreenStillGivesTheFullMenu() {
+        compose.runOnUiThread {
+            for (key in listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+                               KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN)) {
+                compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, key))
+                compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, key))
+            }
+        }
+        compose.onNodeWithText("Change unlock code").assertExists()
     }
 }
 
