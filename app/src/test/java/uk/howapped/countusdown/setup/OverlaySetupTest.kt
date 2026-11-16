@@ -7,18 +7,40 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
+import uk.howapped.countusdown.setup.OverlaySetup.Step
+import uk.howapped.countusdown.setup.OverlaySetup.stepFor
 
 @RunWith(AndroidJUnit4::class)
 class OverlaySetupTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    @Test fun showsOnlyWhenThePermissionIsMissingAndNothingIsRunning() {
-        assertThat(OverlaySetup.needsSetup(allowed = false, running = false, dismissed = false)).isTrue()
-        assertThat(OverlaySetup.needsSetup(allowed = true, running = false, dismissed = false)).isFalse()
-        // Never in front of the children mid-run.
-        assertThat(OverlaySetup.needsSetup(allowed = false, running = true, dismissed = false)).isFalse()
-        // "Not now" hides it until the app is next opened.
-        assertThat(OverlaySetup.needsSetup(allowed = false, running = false, dismissed = true)).isFalse()
+    @Test fun firstAsksHowItShouldStart() {
+        assertThat(stepFor(mode = null, allowed = false, running = false, dismissed = false)).isEqualTo(Step.CHOICE)
+    }
+
+    @Test fun automaticNeedsTheSettingStepsUntilTheSettingIsOn() {
+        assertThat(stepFor(StartMode.AUTO, allowed = false, running = false, dismissed = false)).isEqualTo(Step.PERMISSION)
+        assertThat(stepFor(StartMode.AUTO, allowed = true, running = false, dismissed = false)).isEqualTo(Step.NONE)
+    }
+
+    @Test fun manualNeedsNoSetting() {
+        assertThat(stepFor(StartMode.MANUAL, allowed = false, running = false, dismissed = false)).isEqualTo(Step.NONE)
+    }
+
+    @Test fun alreadyAllowedMeansAutomaticWithoutAsking() {
+        // The TVs were set up with `make grant` before the wizard existed: leave them alone.
+        assertThat(stepFor(mode = null, allowed = true, running = false, dismissed = false)).isEqualTo(Step.NONE)
+    }
+
+    @Test fun neverDuringARunAndNotAgainAfterNotNow() {
+        assertThat(stepFor(mode = null, allowed = false, running = true, dismissed = false)).isEqualTo(Step.NONE)
+        assertThat(stepFor(mode = null, allowed = false, running = false, dismissed = true)).isEqualTo(Step.NONE)
+    }
+
+    @Test fun theChoiceIsRemembered() {
+        assertThat(OverlaySetup.mode(context)).isNull()
+        OverlaySetup.setMode(context, StartMode.MANUAL)
+        assertThat(OverlaySetup.mode(context)).isEqualTo(StartMode.MANUAL)
     }
 
     @Test fun opensTheDisplayOverOtherAppsScreenForThisApp() {

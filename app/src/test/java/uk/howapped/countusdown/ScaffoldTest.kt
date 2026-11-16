@@ -66,14 +66,14 @@ class SetupWizardTest {
     @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun opensWithTheWizardUntilDisplayOverOtherAppsIsOn() {
-        compose.onNodeWithText("Allow COUNT-US-DOWN to display over other apps").assertExists()
+    fun opensByAskingHowItShouldStart() {
+        compose.onNodeWithText("How should COUNT-US-DOWN start?").assertExists()
     }
 
     @Test
     fun backMeansNotNowAndShowsTheIdleScreen() {
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
-        compose.onNodeWithText("Allow COUNT-US-DOWN to display over other apps").assertDoesNotExist()
+        compose.onNodeWithText("How should COUNT-US-DOWN start?").assertDoesNotExist()
         compose.onNodeWithText("Next: School run · Mon 07:45").assertExists()
         assertThat(compose.activity.isFinishing).isFalse()
     }

@@ -1,6 +1,8 @@
 package uk.howapped.countusdown.schedule
 
 import android.app.AlarmManager
+import uk.howapped.countusdown.setup.OverlaySetup
+import uk.howapped.countusdown.setup.StartMode
 import uk.howapped.countusdown.presets.PresetStore
 import uk.howapped.countusdown.core.Countdown
 import uk.howapped.countusdown.audio.CountdownService.Companion.putCountdown
@@ -54,5 +56,13 @@ class RunsTest {
         assertThat(handoff.component!!.className).isEqualTo(MainActivity::class.java.name)
         assertThat(CountdownService.countdownFrom(handoff)).isEqualTo(run)
         assertThat(handoff.getBooleanExtra(MainActivity.EXTRA_FADE_IN, false)).isTrue()
+    }
+
+    @Test fun startingManuallyTurnsOffTheTimedStarts() {
+        OverlaySetup.setMode(context, StartMode.MANUAL)
+        Runs.arm(context, Clock.fixed(Instant.parse("2026-11-14T09:00:00Z"), ZoneId.of("Europe/London")))
+        assertThat(shadowOf(context.getSystemService(AlarmManager::class.java)).peekNextScheduledAlarm()).isNull()
+        assertThat(Runs.next(context, Clock.systemUTC())).isNull()
+        OverlaySetup.setMode(context, StartMode.AUTO)
     }
 }
