@@ -65,7 +65,7 @@ class PresetStore(private val context: Context) {
 
         /** Names for added presets, picked with left/right (typing on a TV remote is miserable). */
         val NAME_CHOICES = listOf(
-            "Swimming", "Park", "Bedtime", "Getting dressed", "Screens off", "Shopping", "Visiting", "Music lesson",
+            "Leave the house", "Swimming", "Park", "Bedtime", "Getting dressed", "Screens off", "Shopping", "Visiting", "Music lesson",
         )
 
         /** A new 10-minute preset that starts by hand, with an id and name nobody else has. */
