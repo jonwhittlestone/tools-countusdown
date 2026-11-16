@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -96,7 +95,7 @@ fun UnlockScreen(code: List<Pad>, onUnlock: () -> Unit, onCancel: () -> Unit) {
         Column(
             Modifier.verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             BasicText(UNLOCK_TITLE, style = TextStyle(color = Mist, fontSize = 32.sp))
             BasicText(UNLOCK_HELP, style = TextStyle(color = Mist.copy(alpha = 0.7f), fontSize = 20.sp))
@@ -105,13 +104,10 @@ fun UnlockScreen(code: List<Pad>, onUnlock: () -> Unit, onCancel: () -> Unit) {
                 style = TextStyle(color = Mist, fontSize = 36.sp),
             )
             BasicText(if (wrong) UNLOCK_WRONG else " ", style = TextStyle(color = Color(0xFFE8B04A), fontSize = 20.sp))
-            Arrow(Pad.UP, ::press)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Arrow(Pad.LEFT, ::press)
-                Spacer(Modifier.size(72.dp))
-                Arrow(Pad.RIGHT, ::press)
+            // One row, so it fits a landscape phone as well as a TV.
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                listOf(Pad.LEFT, Pad.UP, Pad.DOWN, Pad.RIGHT).forEach { Arrow(it, ::press) }
             }
-            Arrow(Pad.DOWN, ::press)
             BasicText(
                 "Cancel",
                 style = TextStyle(color = Mist.copy(alpha = 0.7f), fontSize = 20.sp),
