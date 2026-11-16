@@ -1,6 +1,14 @@
 package uk.howapped.countusdown.schedule
 
 import android.app.AlarmManager
+import uk.howapped.countusdown.presets.PresetStore
+import uk.howapped.countusdown.core.Countdown
+import uk.howapped.countusdown.audio.CountdownService.Companion.putCountdown
+import uk.howapped.countusdown.audio.CountdownService
+import uk.howapped.countusdown.TakeoverActivity
+import uk.howapped.countusdown.MainActivity
+import android.content.Intent
+import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -30,5 +38,21 @@ class RunsTest {
     @Test fun skippingTodayMovesTheAlarmToTomorrow() {
         Runs.skip(context, LocalDate.of(2026, 11, 16))
         assertThat(Runs.arm(context, mondaySix)).isEqualTo(Instant.parse("2026-11-17T07:45:00Z"))
+    }
+
+    @Test fun aScheduledStartArrivesThroughTheTakeoverScreen() {
+        val run = Countdown(PresetStore.SEEDS.first().preset, Instant.parse("2026-11-16T07:45:00Z"))
+        Runs.launch(context, run)
+        val started = shadowOf(context as Application).nextStartedActivity
+        assertThat(started.component!!.className).isEqualTo(TakeoverActivity::class.java.name)
+        assertThat(CountdownService.countdownFrom(started)).isEqualTo(run)
+    }
+
+    @Test fun theTakeoverHandsTheSameRunToTheCountdownAndAsksItToFadeIn() {
+        val run = Countdown(PresetStore.SEEDS.first().preset, Instant.parse("2026-11-16T07:45:00Z"))
+        val handoff = TakeoverActivity.handoff(context, Intent().putCountdown(run))
+        assertThat(handoff.component!!.className).isEqualTo(MainActivity::class.java.name)
+        assertThat(CountdownService.countdownFrom(handoff)).isEqualTo(run)
+        assertThat(handoff.getBooleanExtra(MainActivity.EXTRA_FADE_IN, false)).isTrue()
     }
 }
