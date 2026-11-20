@@ -1,6 +1,7 @@
 package uk.howapped.countusdown.lock
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.view.KeyEvent
 
 /** The remote's direction pad: the only keys a code is made of. */
@@ -46,6 +47,13 @@ object LockStore {
 
     fun code(context: Context): List<Pad> =
         prefs(context).getString(CODE, null)?.let(Pad::decode)?.takeIf { it.size >= 4 } ?: DEFAULT_CODE
+
+    /**
+     * Only a TV is locked: it's the shared screen a child could stop the run on. On a phone
+     * (a parent's own device) the menu opens without the code.
+     */
+    fun codeRequired(context: Context): Boolean =
+        context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
 
     fun setCode(context: Context, code: List<Pad>) {
         require(code.size >= 4) { "a code needs at least 4 presses" }

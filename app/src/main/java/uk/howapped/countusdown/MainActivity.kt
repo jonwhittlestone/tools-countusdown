@@ -43,6 +43,8 @@ import uk.howapped.countusdown.ui.CodeEntry
 import uk.howapped.countusdown.ui.OverlaySetupScreen
 import uk.howapped.countusdown.ui.StartChoiceScreen
 import uk.howapped.countusdown.ui.CountdownScreen
+import uk.howapped.countusdown.ui.MENU_HINT
+import uk.howapped.countusdown.ui.PHONE_MENU_HINT
 import uk.howapped.countusdown.ui.IdleScreen
 import uk.howapped.countusdown.ui.MenuItem
 import uk.howapped.countusdown.ui.ParentMenu
@@ -78,6 +80,9 @@ class MainActivity : ComponentActivity() {
     val unlockOpen: Boolean get() = overlay == Overlay.UNLOCK
 
     private var matcher = CodeMatcher(LockStore.DEFAULT_CODE)
+
+    /** A TV asks for the code during a run; a phone doesn't (design doc 03.21). */
+    private val codeRequired by lazy { LockStore.codeRequired(this) }
 
     /** "Not now" on the setup wizard: don't ask again until the app is next opened. */
     private var setupDismissed = false
@@ -146,7 +151,7 @@ class MainActivity : ComponentActivity() {
             val state = current.uiStateAt(now, clock.zone)
             // Once the run is over, hand the TV back.
             LaunchedEffect(state.phase) { if (state.phase == Phase.DONE) finish() }
-            CountdownScreen(state, onMenu = { overlay = Overlay.UNLOCK })
+            CountdownScreen(state, onMenu = ::askForCode, hint = if (codeRequired) MENU_HINT else PHONE_MENU_HINT)
         }
         when (overlay) {
             Overlay.MENU -> ParentMenu(parentMenuItems(), onDismiss = { overlay = Overlay.NONE })
@@ -238,7 +243,7 @@ class MainActivity : ComponentActivity() {
         }
         // During a run, holding OK asks for the code openly; a quick press still does nothing.
         if (event.keyCode in OK_KEYS && event.action == KeyEvent.ACTION_DOWN && event.repeatCount > 0) {
-            overlay = Overlay.UNLOCK
+            askForCode()
             return true
         }
         val pad = Pad.from(event.keyCode)
@@ -313,6 +318,11 @@ class MainActivity : ComponentActivity() {
         countdown = next
         // The service owns the audio; the activity only draws. Both work from the same startedAt.
         startForegroundService(CountdownService.intentFor(this, next))
+    }
+
+    /** During a run: the code screen on a TV, straight to the full menu on a phone. */
+    private fun askForCode() {
+        if (codeRequired) overlay = Overlay.UNLOCK else openMenu(unlocked = true)
     }
 
     private fun openMenu(unlocked: Boolean) {
