@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,12 +51,15 @@ private val Track = Color(0x22CFD8E3)
 /** One breath of the pulse: slow enough to be calming, never a tick (screentime extension, EASE_IN_OUT_SINE). */
 private const val BREATH_MS = 4000
 
-/** Tells a grown-up how to reach the parent menu, without giving the code away. */
-const val MENU_HINT = "Menu: enter the parent code"
+/** Tells a grown-up how to reach the parent menu (the code is asked for next, never shown). */
+const val MENU_HINT = "Parent menu: hold OK, or tap here"
+
+/** On a phone there is no code to ask for. */
+const val PHONE_MENU_HINT = "Parent menu: tap here"
 const val MENU_ICON = "menu-icon"
 
 @Composable
-fun CountdownScreen(state: CountdownUiState) {
+fun CountdownScreen(state: CountdownUiState, onMenu: () -> Unit = {}, hint: String = MENU_HINT) {
     val background by animateColorAsState(
         when (state.phase) {
             Phase.CALM -> lerp(Dusk, NightBlue, state.fractionLeft)
@@ -110,13 +114,13 @@ fun CountdownScreen(state: CountdownUiState) {
                 )
             }
         }
-        MenuHint(accent, Modifier.align(Alignment.BottomEnd).padding(32.dp))
+        MenuHint(hint, accent, Modifier.align(Alignment.BottomEnd).padding(32.dp).clickable { onMenu() })
     }
 }
 
 /** A small, dim ≡ and label in the corner: there for a parent who looks, easy for a child to ignore. */
 @Composable
-private fun MenuHint(colour: Color, modifier: Modifier) {
+private fun MenuHint(text: String, colour: Color, modifier: Modifier) {
     val dim = colour.copy(alpha = 0.35f)
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Canvas(Modifier.size(20.dp).testTag(MENU_ICON)) {
@@ -126,7 +130,7 @@ private fun MenuHint(colour: Color, modifier: Modifier) {
             }
         }
         Spacer(Modifier.width(10.dp))
-        BasicText(MENU_HINT, style = TextStyle(color = dim, fontSize = 16.sp))
+        BasicText(text, style = TextStyle(color = dim, fontSize = 16.sp))
     }
 }
 

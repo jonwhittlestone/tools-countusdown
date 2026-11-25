@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import java.time.Instant
@@ -66,8 +67,16 @@ class CountdownScreenTest {
         for (p in listOf(Phase.CALM, Phase.GRACE, Phase.LATE)) {
             phase = p
             compose.onNodeWithText(MENU_HINT).assertExists()
-            compose.onNodeWithTag(MENU_ICON).assertExists()
+            compose.onNodeWithTag(MENU_ICON, useUnmergedTree = true).assertExists()
             assertThat(MENU_HINT).doesNotContain("←")
         }
+    }
+
+    @Test fun theHintSaysHoldOkAndTappingItOpensTheCodeScreen() {
+        var opened = false
+        compose.setContent { CountdownScreen(CountdownUiState(Phase.CALM, 5, 0.2f, "08:15"), onMenu = { opened = true }) }
+        assertThat(MENU_HINT).contains("hold OK")
+        compose.onNodeWithText(MENU_HINT).performClick()
+        assertThat(opened).isTrue()
     }
 }

@@ -43,11 +43,14 @@ import uk.howapped.countusdown.ui.CodeEntry
 import uk.howapped.countusdown.ui.OverlaySetupScreen
 import uk.howapped.countusdown.ui.StartChoiceScreen
 import uk.howapped.countusdown.ui.CountdownScreen
+import uk.howapped.countusdown.ui.MENU_HINT
+import uk.howapped.countusdown.ui.PHONE_MENU_HINT
 import uk.howapped.countusdown.ui.IdleScreen
 import uk.howapped.countusdown.ui.MenuItem
 import uk.howapped.countusdown.ui.ParentMenu
 import uk.howapped.countusdown.ui.PresetEditor
 import uk.howapped.countusdown.ui.uiStateAt
+import uk.howapped.countusdown.ui.UnlockScreen
 
 /**
  * The one screen. Which run it shows, in order of preference:
@@ -64,7 +67,7 @@ class MainActivity : ComponentActivity() {
     /** Bumped when the takeover hands over: the countdown fades in from night blue. */
     private var fadeIns by mutableIntStateOf(0)
 
-    private enum class Overlay { NONE, MENU, EDITOR, CODE, CHOICE, PERMISSION }
+    private enum class Overlay { NONE, MENU, EDITOR, CODE, CHOICE, PERMISSION, UNLOCK }
     private var overlay by mutableStateOf(Overlay.NONE)
 
     /** True when the menu was opened with the code: only then can the code or today's run change. */
@@ -73,7 +76,13 @@ class MainActivity : ComponentActivity() {
     /** True while the parent menu (opened by the D-pad code) is showing. */
     val parentMenuOpen: Boolean get() = overlay == Overlay.MENU
 
+    /** True while the code screen (hold OK, or tap the hint) is asking for the parent code. */
+    val unlockOpen: Boolean get() = overlay == Overlay.UNLOCK
+
     private var matcher = CodeMatcher(LockStore.DEFAULT_CODE)
+
+    /** A TV asks for the code during a run; a phone doesn't (design doc 03.21). */
+    private val codeRequired by lazy { LockStore.codeRequired(this) }
 
     /** "Not now" on the setup wizard: don't ask again until the app is next opened. */
     private var setupDismissed = false
@@ -142,7 +151,7 @@ class MainActivity : ComponentActivity() {
             val state = current.uiStateAt(now, clock.zone)
             // Once the run is over, hand the TV back.
             LaunchedEffect(state.phase) { if (state.phase == Phase.DONE) finish() }
-            CountdownScreen(state)
+            CountdownScreen(state, onMenu = ::askForCode, hint = if (codeRequired) MENU_HINT else PHONE_MENU_HINT)
         }
         when (overlay) {
             Overlay.MENU -> ParentMenu(parentMenuItems(), onDismiss = { overlay = Overlay.NONE })
@@ -161,6 +170,11 @@ class MainActivity : ComponentActivity() {
                     matcher = CodeMatcher(it)
                     overlay = Overlay.NONE
                 },
+                onCancel = { overlay = Overlay.NONE },
+            )
+            Overlay.UNLOCK -> UnlockScreen(
+                LockStore.code(this),
+                onUnlock = { openMenu(unlocked = true) },
                 onCancel = { overlay = Overlay.NONE },
             )
             Overlay.CHOICE -> StartChoiceScreen(
@@ -225,6 +239,11 @@ class MainActivity : ComponentActivity() {
         // Idle, there is no countdown to protect: OK opens the menu (without the lock-changing items).
         if (countdown == null && event.keyCode in OK_KEYS) {
             if (event.action == KeyEvent.ACTION_UP) openMenu(unlocked = false)
+            return true
+        }
+        // During a run, holding OK asks for the code openly; a quick press still does nothing.
+        if (event.keyCode in OK_KEYS && event.action == KeyEvent.ACTION_DOWN && event.repeatCount > 0) {
+            askForCode()
             return true
         }
         val pad = Pad.from(event.keyCode)
@@ -299,6 +318,11 @@ class MainActivity : ComponentActivity() {
         countdown = next
         // The service owns the audio; the activity only draws. Both work from the same startedAt.
         startForegroundService(CountdownService.intentFor(this, next))
+    }
+
+    /** During a run: the code screen on a TV, straight to the full menu on a phone. */
+    private fun askForCode() {
+        if (codeRequired) overlay = Overlay.UNLOCK else openMenu(unlocked = true)
     }
 
     private fun openMenu(unlocked: Boolean) {

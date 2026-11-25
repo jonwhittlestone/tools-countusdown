@@ -38,7 +38,7 @@ class RunsTest {
     }
 
     @Test fun skippingTodayMovesTheAlarmToTomorrow() {
-        Runs.skip(context, LocalDate.of(2026, 11, 16))
+        Runs.skip(context, LocalDate.of(2026, 11, 16), mondaySix) // the real clock would prune a past date
         assertThat(Runs.arm(context, mondaySix)).isEqualTo(Instant.parse("2026-11-17T07:45:00Z"))
     }
 
