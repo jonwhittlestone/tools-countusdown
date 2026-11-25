@@ -19,6 +19,7 @@ import uk.howapped.countusdown.presets.PresetStore
 import uk.howapped.countusdown.presets.StoredPreset
 import uk.howapped.countusdown.setup.OverlaySetup
 import uk.howapped.countusdown.setup.StartMode
+import uk.howapped.countusdown.warning.WarningOverlayService
 
 /**
  * Starting countdowns by the clock: arms an exact alarm for the earliest next start of any
@@ -105,6 +106,7 @@ object Runs {
      * in over whatever is on the TV first, then hands over to the countdown.
      */
     fun launch(context: Context, countdown: Countdown) {
+        WarningOverlayService.stop(context) // the box makes way for the takeover
         context.startForegroundService(CountdownService.intentFor(context, countdown))
         context.startActivity(
             Intent(context, TakeoverActivity::class.java)

@@ -88,7 +88,7 @@ clean: ## Delete build outputs
 ##@ 3. Audio (offline, on doylestone02)
 
 .PHONY: audio
-audio: audio-bed audio-voices ## Regenerate all bundled audio (voices skip clips that already exist)
+audio: audio-bed audio-chime audio-voices ## Regenerate all bundled audio (voices skip clips that already exist)
 
 .PHONY: audio-voices
 audio-voices: ## Render the TTS voice clips + manifest.json (FORCE=1 re-renders everything)
@@ -101,6 +101,10 @@ audio-verify: ## Transcribe every clip with Whisper and flag any that don't matc
 .PHONY: audio-bed
 audio-bed: ## Synthesise the three ambient bed loops with ffmpeg
 	cd pipeline && $(UV) run --inexact python -m countusdown_pipeline.stems
+
+.PHONY: audio-chime
+audio-chime: ## Synthesise the v1.0 warning chime with ffmpeg
+	cd pipeline && $(UV) run --inexact python -m countusdown_pipeline.chime
 
 .PHONY: audio-size
 audio-size: ## Show how much the bundled audio adds to the APK
