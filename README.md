@@ -69,6 +69,14 @@ After installing, open the app once (or reinstall): Android doesn't deliver alar
 - `make test-device` runs the instrumented tests on a connected emulator or TV.
 - CI (`.github/workflows/ci.yml`) runs the unit tests and builds the APK on every push and PR.
 
+## Releases and tags
+
+- The version lives in one place: `versionName` (and `versionCode`) in `app/build.gradle.kts`. A release is tagged `v<versionName>`.
+- **v0.x** is the adb-installable PoC. **v1** adds the overlay timer, UI improvements and Google Play, and stays sideloadable over adb for development.
+- To release: bump `versionName` and `versionCode` in the last PR of the release. After it's merged, run `make tag` on an up-to-date `main`.
+- The tag triggers `.github/workflows/release.yml`. It checks that the tag matches `versionName`, runs the tests, and publishes a GitHub release with `countusdown-vX.Y.Z.apk` attached.
+- That APK is a debug build signed with CI's debug key. It installs on a fresh device, but `adb install -r` over a copy built on another machine fails with a signature mismatch. Uninstall first, or keep using `make run-tv`. Release signing comes with v1's Google Play work.
+
 ## 4. Makefile targets
 
 Run `make` to list them all.
@@ -90,3 +98,5 @@ Run `make` to list them all.
 | `audio-verify` / `audio-size` | Whisper-check every clip / show the audio's APK footprint |
 | `test-pipeline` | Pipeline pytest only |
 | `banner` | Re-render the TV banner PNG |
+| `version` / `tags` | Print the app version / list release tags |
+| `tag` | Tag `main` as `v<versionName>` and push it; CI publishes the release |
