@@ -1,8 +1,14 @@
 package uk.howapped.countusdown.ui
 
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
@@ -46,5 +52,36 @@ class PresetEditorTest {
     @Test fun theFiveSecondTestLengthIsLabelledInSeconds() {
         compose.setContent { PresetEditor(PresetStore.SEEDS.filter { it.preset.id == PresetStore.TEST_ID }, onSave = {}, onClose = {}) }
         compose.onNodeWithText("Countdown: 5 s (test)", substring = true).assertExists()
+    }
+
+    @Test fun scheduledPresetsHaveAWarnBeforeRowAndManualOnesDont() {
+        compose.setContent { PresetEditor(PresetStore.SEEDS, onSave = {}, onClose = {}) }
+        // School run starts by itself on weekdays: it warns 5 minutes before by default.
+        compose.onNodeWithText("Warn before: 5 min", substring = true).assertExists()
+        // Leave the house : 30m only starts by hand, so there's nothing to warn about.
+        compose.onNodeWithText("Preset: School run", substring = true).press(Key.DirectionRight)
+        compose.onNodeWithText("Preset: Leave the house : 30m", substring = true).assertExists()
+        compose.onNodeWithText("Warn before", substring = true).assertDoesNotExist()
+    }
+
+    @Test fun warnBeforeCyclesOffTwoFiveTenAndIsSaved() {
+        var saved: List<StoredPreset>? = null
+        compose.setContent { PresetEditor(PresetStore.SEEDS, onSave = { saved = it }, onClose = {}) }
+        compose.onNodeWithText("Warn before: 5 min", substring = true).press(Key.DirectionRight)
+        compose.onNodeWithText("Warn before: 10 min", substring = true).press(Key.DirectionRight)
+        compose.onNodeWithText("Warn before: Off", substring = true).press(Key.DirectionRight)
+        compose.onNodeWithText("Warn before: 2 min", substring = true).press(Key.DirectionLeft)
+        compose.onNodeWithText("Warn before: Off", substring = true).press(Key.DirectionRight)
+        compose.onNodeWithText("Save").performScrollTo().performClick()
+        assertThat(saved!!.first { it.preset.id == "school" }.schedule!!.warnMinutes).isEqualTo(2)
+    }
+
+    /** Focus a row and press a D-pad key on it, as the remote would. */
+    @OptIn(ExperimentalTestApi::class)
+    private fun SemanticsNodeInteraction.press(key: Key) {
+        performScrollTo()
+        requestFocus()
+        performKeyInput { pressKey(key) }
+        compose.waitForIdle()
     }
 }
