@@ -65,4 +65,70 @@ class RunsTest {
         assertThat(Runs.next(context, Clock.systemUTC())).isNull()
         OverlaySetup.setMode(context, StartMode.AUTO)
     }
+
+    // ── v1.0 warning alarm (F19) ──────────────────────────────────────────────────────────────
+
+    private fun alarms() = shadowOf(context.getSystemService(AlarmManager::class.java)).scheduledAlarms
+    private fun warningAlarm() = alarms().singleOrNull { shadowOf(it.operation).savedIntent.action == Runs.ACTION_WARN }
+    private fun startAlarm() = alarms().single { shadowOf(it.operation).savedIntent.action == Runs.ACTION_START }
+    private fun saveSchoolRunWarning(minutes: Int) {
+        val store = PresetStore(context)
+        store.save(store.all().map { p ->
+            if (p.preset.id == "school") p.copy(schedule = p.schedule!!.copy(warnMinutes = minutes)) else p
+        })
+    }
+
+    @Test fun armingAlsoSetsAWarningAlarmTheWarnTimeBeforeTheStart() {
+        Runs.arm(context, mondaySix)
+        assertThat(startAlarm().triggerAtMs).isEqualTo(Instant.parse("2026-11-16T07:45:00Z").toEpochMilli())
+        val warning = warningAlarm()!!
+        assertThat(warning.triggerAtMs).isEqualTo(Instant.parse("2026-11-16T07:40:00Z").toEpochMilli())
+        assertThat(warning.getType()).isEqualTo(AlarmManager.RTC_WAKEUP)
+    }
+
+    @Test fun theWarningKnowsWhichRunAndWhenItStarts() {
+        Runs.arm(context, mondaySix)
+        val intent = shadowOf(warningAlarm()!!.operation).savedIntent
+        assertThat(intent.getStringExtra(Runs.EXTRA_PRESET_ID)).isEqualTo("school")
+        assertThat(intent.getLongExtra(CountdownService.EXTRA_STARTED_AT, 0L))
+            .isEqualTo(Instant.parse("2026-11-16T07:45:00Z").toEpochMilli())
+    }
+
+    @Test fun theWarningFollowsThePresetsWarnTime() {
+        saveSchoolRunWarning(10)
+        Runs.arm(context, mondaySix)
+        assertThat(warningAlarm()!!.triggerAtMs).isEqualTo(Instant.parse("2026-11-16T07:35:00Z").toEpochMilli())
+    }
+
+    @Test fun noWarningAlarmWhenWarnBeforeIsOff() {
+        saveSchoolRunWarning(0)
+        Runs.arm(context, mondaySix)
+        assertThat(warningAlarm()).isNull()
+        assertThat(startAlarm().triggerAtMs).isEqualTo(Instant.parse("2026-11-16T07:45:00Z").toEpochMilli())
+    }
+
+    @Test fun anEarlierWarningIsCancelledWhenWarnBeforeIsTurnedOff() {
+        Runs.arm(context, mondaySix)
+        saveSchoolRunWarning(0)
+        Runs.arm(context, mondaySix)
+        assertThat(warningAlarm()).isNull()
+    }
+
+    @Test fun skippingTodayMovesTheWarningToTomorrow() {
+        Runs.skip(context, LocalDate.of(2026, 11, 16), mondaySix)
+        assertThat(warningAlarm()!!.triggerAtMs).isEqualTo(Instant.parse("2026-11-17T07:40:00Z").toEpochMilli())
+    }
+
+    @Test fun noWarningWhenStartingManually() {
+        OverlaySetup.setMode(context, StartMode.MANUAL)
+        Runs.arm(context, mondaySix)
+        assertThat(warningAlarm()).isNull()
+        OverlaySetup.setMode(context, StartMode.AUTO)
+    }
+
+    @Test fun armingInsideTheWarningWindowWarnsStraightAway() {
+        val mondaySevenFortyTwo = Clock.fixed(Instant.parse("2026-11-16T07:42:00Z"), london)
+        Runs.arm(context, mondaySevenFortyTwo)
+        assertThat(warningAlarm()!!.triggerAtMs).isEqualTo(Instant.parse("2026-11-16T07:42:00Z").toEpochMilli())
+    }
 }
