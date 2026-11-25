@@ -32,6 +32,9 @@ class PresetStore(private val context: Context) {
                 "no voice clips for ${it.preset.durationMinutes} minutes (allowed: ${Preset.ALLOWED_DURATIONS})"
             }
             require(it.preset.graceMinutes in 0..MAX_GRACE) { "grace must be 0..$MAX_GRACE minutes" }
+            it.schedule?.let { s ->
+                require(s.warnMinutes in Schedule.WARN_CHOICES) { "warn must be one of ${Schedule.WARN_CHOICES}" }
+            }
         }
         prefs().edit().putString(KEY, JSONArray(presets.map(::encode)).toString()).apply()
     }
@@ -49,6 +52,7 @@ class PresetStore(private val context: Context) {
             p.schedule?.let { s ->
                 put("start", s.start.toString())
                 put("days", JSONArray(s.days.sorted().map { it.name }))
+                put("warn", s.warnMinutes)
             }
         }
 
@@ -56,7 +60,12 @@ class PresetStore(private val context: Context) {
         Preset(o.getString("id"), o.getString("name"), o.getInt("duration"), o.getInt("grace")),
         if (o.has("start")) {
             val days = o.getJSONArray("days")
-            Schedule(List(days.length()) { DayOfWeek.valueOf(days.getString(it)) }.toSet(), LocalTime.parse(o.getString("start")))
+            Schedule(
+                List(days.length()) { DayOfWeek.valueOf(days.getString(it)) }.toSet(),
+                LocalTime.parse(o.getString("start")),
+                // Presets saved by v0.x have no "warn": they get the default.
+                o.optInt("warn", Schedule.DEFAULT_WARN),
+            )
         } else {
             null
         },

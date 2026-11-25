@@ -98,6 +98,12 @@ fun PresetEditor(presets: List<StoredPreset>, onSave: (List<StoredPreset>) -> Un
                     onLeft = { update { it.copy(schedule = s.copy(start = s.start.minusMinutes(5))) } },
                     onRight = { update { it.copy(schedule = s.copy(start = s.start.plusMinutes(5))) } },
                 )
+                // How long before the start the on-screen warning appears (v1.0, design doc 04.02).
+                TvRow(
+                    "Warn before: ${if (s.warnMinutes == 0) "Off" else "${s.warnMinutes} min"}",
+                    onLeft = { update { it.copy(schedule = s.copy(warnMinutes = Schedule.WARN_CHOICES.step(s.warnMinutes, -1))) } },
+                    onRight = { update { it.copy(schedule = s.copy(warnMinutes = Schedule.WARN_CHOICES.step(s.warnMinutes, +1))) } },
+                )
             }
             TvRow("Add preset", onSelect = {
                 working = working + PresetStore.newPreset(working)
@@ -116,4 +122,8 @@ fun PresetEditor(presets: List<StoredPreset>, onSave: (List<StoredPreset>) -> Un
 }
 
 private fun StoredPreset.withDays(days: Set<DayOfWeek>?): StoredPreset =
-    copy(schedule = days?.let { Schedule(it, schedule?.start ?: LocalTime.of(7, 45)) })
+    copy(
+        schedule = days?.let {
+            Schedule(it, schedule?.start ?: LocalTime.of(7, 45), schedule?.warnMinutes ?: Schedule.DEFAULT_WARN)
+        },
+    )
