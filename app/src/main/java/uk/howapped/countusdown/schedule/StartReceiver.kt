@@ -9,7 +9,7 @@ import uk.howapped.countusdown.audio.CountdownService
 import uk.howapped.countusdown.core.Countdown
 import uk.howapped.countusdown.presets.PresetStore
 
-/** Fires at the scheduled start, and after a reboot or an app update to re-arm the alarm. */
+/** Fires at the scheduled start and its warning, and after a reboot or an app update to re-arm. */
 class StartReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val clock = AppClock.clock
@@ -21,6 +21,9 @@ class StartReceiver : BroadcastReceiver() {
                 // A preset deleted or edited since the alarm was armed: just re-arm below.
                 if (preset != null) Runs.launch(context, Countdown(preset.preset, startedAt))
             }
+            // The warning before a start: the overlay box arrives with F20. The start alarm is
+            // still armed, so don't re-arm here: it would set the warning for "now" all over again.
+            Runs.ACTION_WARN -> return
             // Rebooted (or reinstalled) in the middle of a run: pick it back up.
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED ->
                 Runs.active(context, clock)?.let { Runs.launch(context, it) }

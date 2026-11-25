@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import uk.howapped.countusdown.AppClock
@@ -25,6 +26,7 @@ import uk.howapped.countusdown.setup.StartMode
  */
 object Runs {
     const val ACTION_START = "uk.howapped.countusdown.action.START_SCHEDULED"
+    const val ACTION_WARN = "uk.howapped.countusdown.action.WARN_SCHEDULED"
     const val EXTRA_PRESET_ID = "scheduled_preset_id"
     private const val PREFS = "runs"
     private const val SKIP = "skip_dates"
@@ -51,18 +53,35 @@ object Runs {
             .minByOrNull { it.second }
     }
 
-    /** Arms (or re-arms) the alarm for the next scheduled start. Returns when it will fire. */
+    /**
+     * Arms (or re-arms) the alarm for the next scheduled start, and the warning alarm the preset's
+     * Warn before ahead of it. Returns when the start alarm will fire.
+     */
     fun arm(context: Context, clock: Clock): Instant? {
         val next = next(context, clock)
         val alarms = context.getSystemService(AlarmManager::class.java)
-        val pending = startIntent(context, next)
+        val pending = alarmIntent(context, START_CODE, ACTION_START, next)
         if (next == null) {
             alarms.cancel(pending)
         } else {
             // Exact and allowed while idle: the TV box is usually dozing at 07:44.
             alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.second.toEpochMilli(), pending)
         }
+        val warnPending = alarmIntent(context, WARN_CODE, ACTION_WARN, next)
+        val warnAt = next?.let { warnAt(it, Instant.now(clock)) }
+        if (warnAt == null) {
+            alarms.cancel(warnPending)
+        } else {
+            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, warnAt.toEpochMilli(), warnPending)
+        }
         return next?.second
+    }
+
+    /** start − Warn before, or now if that has passed (armed at 07:42 after a reboot); null when Off. */
+    private fun warnAt(next: Pair<StoredPreset, Instant>, now: Instant): Instant? {
+        val warn = next.first.schedule?.warnMinutes ?: 0
+        if (warn <= 0) return null
+        return maxOf(next.second.minus(Duration.ofMinutes(warn.toLong())), now)
     }
 
     /** The scheduled run going on right now, if any (e.g. after a reboot at 07:50). */
@@ -94,10 +113,19 @@ object Runs {
         )
     }
 
-    private fun startIntent(context: Context, next: Pair<StoredPreset, Instant>?): PendingIntent = PendingIntent.getBroadcast(
+    /** Request code 0 is the start alarm, 1 the warning: two separate alarms for the same run. */
+    private const val START_CODE = 0
+    private const val WARN_CODE = 1
+
+    private fun alarmIntent(
+        context: Context,
+        code: Int,
+        action: String,
+        next: Pair<StoredPreset, Instant>?,
+    ): PendingIntent = PendingIntent.getBroadcast(
         context,
-        0,
-        Intent(context, StartReceiver::class.java).setAction(ACTION_START)
+        code,
+        Intent(context, StartReceiver::class.java).setAction(action)
             .putExtra(EXTRA_PRESET_ID, next?.first?.preset?.id)
             .putExtra(CountdownService.EXTRA_STARTED_AT, next?.second?.toEpochMilli() ?: 0L),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
