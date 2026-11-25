@@ -4,6 +4,8 @@
     <!-- The countdown's audio runs in a foreground service so it survives the screen being covered. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- v1.0: the warning box before a scheduled start is a specialUse foreground service. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Starting on time at 07:45. USE_EXACT_ALARM is granted automatically to alarm/timer apps
          on Android 13+; older versions use SCHEDULE_EXACT_ALARM. -->
@@ -70,6 +72,16 @@
             android:name=".audio.CountdownService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+
+        <!-- The "until the countdown" box drawn over other apps before a scheduled start. -->
+        <service
+            android:name=".warning.WarningOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="On-screen countdown warning before a scheduled routine" />
+        </service>
     </application>
 
 </manifest>
