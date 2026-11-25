@@ -6,10 +6,17 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
-/** When a preset starts by itself, e.g. Monday to Friday at 07:45 (local time). */
-data class Schedule(val days: Set<DayOfWeek>, val start: LocalTime) {
+/**
+ * When a preset starts by itself, e.g. Monday to Friday at 07:45 (local time), and how many
+ * minutes before that the on-screen warning appears (0 = no warning).
+ */
+data class Schedule(val days: Set<DayOfWeek>, val start: LocalTime, val warnMinutes: Int = DEFAULT_WARN) {
     companion object {
         val WEEKDAYS: Set<DayOfWeek> = DayOfWeek.entries.toSet() - DayOfWeek.SATURDAY - DayOfWeek.SUNDAY
+
+        /** The Warn before choices in Edit presets: Off, 2, 5 or 10 minutes (design doc 04.02.01). */
+        val WARN_CHOICES = listOf(0, 2, 5, 10)
+        const val DEFAULT_WARN = 5
     }
 }
 
