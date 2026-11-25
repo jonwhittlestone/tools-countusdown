@@ -59,6 +59,36 @@ class PresetStoreTest {
         assertThat(PresetStore(context).byId("school")!!.schedule!!.start).isEqualTo(LocalTime.of(7, 40))
     }
 
+    @Test fun aScheduleWarnsFiveMinutesBeforeByDefault() {
+        assertThat(Schedule(Schedule.WEEKDAYS, LocalTime.of(7, 45)).warnMinutes).isEqualTo(5)
+        assertThat(Schedule.WARN_CHOICES).containsExactly(0, 2, 5, 10).inOrder()
+        assertThat(PresetStore(context).byId("school")!!.schedule!!.warnMinutes).isEqualTo(5)
+    }
+
+    @Test fun theWarnTimeIsKeptWhenSaved() {
+        val edited = PresetStore(context).all().map {
+            if (it.preset.id == "school") it.copy(schedule = it.schedule!!.copy(warnMinutes = 2)) else it
+        }
+        PresetStore(context).save(edited)
+        assertThat(PresetStore(context).byId("school")!!.schedule!!.warnMinutes).isEqualTo(2)
+    }
+
+    @Test fun presetsSavedBeforeV1WarnFiveMinutesBefore() {
+        // v0 stored schedules without a "warn" field.
+        context.getSharedPreferences("presets", Context.MODE_PRIVATE).edit().putString(
+            "presets",
+            """[{"id":"school","name":"School run","duration":30,"grace":5,"start":"07:40","days":["MONDAY"]}]""",
+        ).commit()
+        val school = PresetStore(context).byId("school")!!.schedule!!
+        assertThat(school.start).isEqualTo(LocalTime.of(7, 40))
+        assertThat(school.warnMinutes).isEqualTo(5)
+    }
+
+    @Test fun onlyTheOfferedWarnTimesAreAccepted() {
+        val odd = PresetStore.SEEDS.first().let { it.copy(schedule = it.schedule!!.copy(warnMinutes = 7)) }
+        assertThrows(IllegalArgumentException::class.java) { PresetStore(context).save(listOf(odd)) }
+    }
+
     @Test fun onlyDurationsWithRecordedVoiceClipsAreAccepted() {
         val odd = StoredPreset(Preset("x", "Odd", durationMinutes = 7, graceMinutes = 0), null)
         assertThrows(IllegalArgumentException::class.java) { PresetStore(context).save(listOf(odd)) }
