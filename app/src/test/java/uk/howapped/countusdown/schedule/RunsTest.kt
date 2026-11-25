@@ -32,7 +32,7 @@ class RunsTest {
     @Test fun armsAnExactAlarmForTheNextStart() {
         val at = Runs.arm(context, mondaySix)
         assertThat(at).isEqualTo(Instant.parse("2026-11-16T07:45:00Z"))
-        val alarm = shadowOf(context.getSystemService(AlarmManager::class.java)).peekNextScheduledAlarm()!!
+        val alarm = startAlarm() // since v1.0 the earliest alarm is the warning, 5 min before
         assertThat(alarm.triggerAtMs).isEqualTo(at!!.toEpochMilli())
         assertThat(alarm.getType()).isEqualTo(AlarmManager.RTC_WAKEUP)
     }
@@ -130,5 +130,14 @@ class RunsTest {
         val mondaySevenFortyTwo = Clock.fixed(Instant.parse("2026-11-16T07:42:00Z"), london)
         Runs.arm(context, mondaySevenFortyTwo)
         assertThat(warningAlarm()!!.triggerAtMs).isEqualTo(Instant.parse("2026-11-16T07:42:00Z").toEpochMilli())
+    }
+
+    @Test fun theWarningFiringDoesNotReArmItselfForNow() {
+        Runs.arm(context, mondaySix)
+        val manager = context.getSystemService(AlarmManager::class.java)
+        manager.cancel(warningAlarm()!!.operation!!) // as if it has just fired (alarms are one-shot)
+        StartReceiver().onReceive(context, Intent(context, StartReceiver::class.java).setAction(Runs.ACTION_WARN))
+        assertThat(warningAlarm()).isNull()
+        assertThat(startAlarm().triggerAtMs).isEqualTo(Instant.parse("2026-11-16T07:45:00Z").toEpochMilli())
     }
 }
