@@ -23,6 +23,11 @@ import android.view.WindowManager
 import android.view.animation.PathInterpolator
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.min
@@ -46,6 +51,7 @@ class WarningOverlayService : Service() {
     private var box: LinearLayout? = null
     private var time: TextView? = null
     private var pulse: ObjectAnimator? = null
+    private var chime: ExoPlayer? = null
     // The alarm decides when the box appears (start − Warn before, or now if armed late), so the
     // service only needs a window as wide as the longest choice.
     private val warning = Warning(Duration.ofMinutes(Schedule.WARN_CHOICES.max().toLong()))
@@ -74,7 +80,10 @@ class WarningOverlayService : Service() {
                 finish()
                 return
             }
-            if (box == null) addBox()
+            if (box == null) {
+                addBox()
+                playChime() // once, as the box appears
+            }
             time?.text = shown.label
             time?.setTextColor(argb(shown.colour))
             setPulsing(shown.pulses)
@@ -127,6 +136,33 @@ class WarningOverlayService : Service() {
         windowManager.addView(box, params)
     }
 
+    /**
+     * One soft chime (pipeline/countusdown_pipeline/chime.py). It doesn't take audio focus, so the
+     * programme underneath carries on playing rather than pausing.
+     */
+    private fun playChime() {
+        chime = ExoPlayer.Builder(this).build().apply {
+            setAudioAttributes(
+                AudioAttributes.Builder().setUsage(C.USAGE_NOTIFICATION_EVENT)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_SONIFICATION).build(),
+                /* handleAudioFocus = */ false,
+            )
+            setMediaItem(MediaItem.fromUri(CHIME))
+            addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (state == Player.STATE_ENDED) releaseChime()
+                }
+            })
+            prepare()
+            play()
+        }
+    }
+
+    private fun releaseChime() {
+        chime?.release()
+        chime = null
+    }
+
     /** Opacity 255 → 60 → 255 over 900 ms each way, EASE_IN_OUT_SINE, as the extension does. */
     private fun setPulsing(on: Boolean) {
         val view = box ?: return
@@ -164,6 +200,7 @@ class WarningOverlayService : Service() {
         handler.removeCallbacksAndMessages(null)
         pulse?.cancel()
         pulse = null
+        releaseChime()
         box?.let { windowManager.removeView(it) }
         box = null
         time = null
@@ -178,6 +215,7 @@ class WarningOverlayService : Service() {
 
     companion object {
         const val CAPTION = "until the countdown"
+        const val CHIME = "asset:///audio/chime.ogg"
         private const val CHANNEL = "warning"
         private const val NOTIFICATION_ID = 2 // the countdown's own service uses 1
 
