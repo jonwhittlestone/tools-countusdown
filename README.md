@@ -2,11 +2,12 @@
 
 A calm "leave the house" countdown for Android TV. At 07:45 on weekdays it takes over the living-room TV and counts down to 08:15. The screen shows a big minutes number in a slowly draining ring. Gentle voice cues and an ambient soundscape get more urgent as the deadline gets closer. A parental D-pad code is needed to exit.
 
-> Status: **v1 feature-complete** (commits 1–23). See the design doc for the commit tracker and the log of decisions.
+> Status: **v1.0.0**: the v0 countdown plus a warning box before a scheduled start. See the design doc for the commit tracker and the log of decisions.
 
 ## What it does
 
 - **Starts itself** at a preset's scheduled time (School run: weekdays 07:45), waking the TV out of its ambient screensaver. Presets without a schedule ("Leave the house : 30m", and the 5-second test "Leave the house : 5s") are started from the menu.
+- **Warns first** (v1.0): a few minutes before a scheduled start (Warn before: Off / 2 / 5 / 10 min, default 5, per preset), a small "05:00 until the countdown" box appears at the top right over whatever is playing, with one soft chime. It goes grey → yellow → amber and pulses like the screentime timer, never takes the remote, and makes way for the takeover at the start. It needs "Display over other apps"; without it the takeover still comes.
 - **Shows** whole minutes left inside a slowly draining ring, plus "leave at 08:15". The numeral breathes with a 4 s pulse, and nothing changes faster than once a minute. The background drifts from night blue to dusk, turns amber during the grace period, and dims when late.
 - **Speaks** calm cues in four rotating stock voices (3 × Kokoro British + Chatterbox) at T-30, 25, 20, 15, 10, then every minute for the last five, then "time to leave" and "we're late". The wording firms up (gentle → nudge → firm) but the volume never rises.
 - **Soundscape:** a synthesised ambient bed that thickens from 1 to 3 layers as the target nears and goes silent when late.
@@ -18,12 +19,14 @@ A calm "leave the house" countdown for Android TV. At 07:45 on weekdays it takes
 flowchart LR
   subgraph dev [doylestone02, offline: make audio]
     P[phrases.yaml] --> T[Kokoro x3 + Chatterbox TTS]
-    S[ffmpeg lavfi maths] --> B[3 bed loops]
+    S[ffmpeg lavfi maths] --> B[3 bed loops + chime]
     T --> N[loudnorm -> opus] --> M[168 clips + manifest.json]
     M --> V[Whisper check: make audio-verify]
   end
   subgraph TV [Google TV box]
     A[AlarmManager: next scheduled start] --> R[StartReceiver]
+    A -- start - Warn before --> W[WarningOverlayService: box over other apps + chime]
+    W -. stopped at the start .-> R
     R --> SV[CountdownService: foreground]
     R --> UI[MainActivity: ring + minutes]
     SV --> SCH[CueScheduler, 1 s tick] --> VP[VoicePicker] --> EXO[ExoPlayer: voice + 3 bed layers]
@@ -94,7 +97,7 @@ Run `make` to list them all.
 | `run-tv` / `run-front-tv` | Connect to a TV by mDNS name, then build, install and launch |
 | `grant` | Allow the app to come to the front by itself (run by `install`) |
 | `alarms` | Show the app's next scheduled alarm |
-| `audio` / `audio-voices` / `audio-bed` | Regenerate the bundled audio (voices skip existing clips; `FORCE=1` to redo) |
+| `audio` / `audio-voices` / `audio-bed` / `audio-chime` | Regenerate the bundled audio (voices skip existing clips; `FORCE=1` to redo) |
 | `audio-verify` / `audio-size` | Whisper-check every clip / show the audio's APK footprint |
 | `test-pipeline` | Pipeline pytest only |
 | `banner` | Re-render the TV banner PNG |
