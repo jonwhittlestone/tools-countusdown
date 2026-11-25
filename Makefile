@@ -197,3 +197,28 @@ run-tv: ## Connect to the living-room TV, then build, install and start the app 
 run-front-tv: ## Same as run-tv, for the front-room TV (FRONT_TV=)
 	@test -n "$(FRONT_TV)" || { echo "Set FRONT_TV=<mDNS name or ip>, e.g. in local.mk"; exit 1; }
 	@serial=$$($(WIFI_DEVICE) "$(FRONT_TV)") && $(MAKE) --no-print-directory run DEVICE=$$serial
+
+##@ 7. Release
+
+# The version lives in one place: versionName in app/build.gradle.kts. Tags are v<versionName>.
+# v0.x = the adb-installable PoC; v1 = overlay, UI improvements and Google Play (design doc §04).
+VERSION := $(shell sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
+
+.PHONY: version
+version: ## Print the app version (versionName in app/build.gradle.kts)
+	@echo $(VERSION)
+
+.PHONY: tag
+tag: ## Tag main as v<versionName> and push the tag; CI then publishes a GitHub release with the APK
+	@test "$$(git rev-parse --abbrev-ref HEAD)" = main || { echo "Tag from main (git checkout main)"; exit 1; }
+	@test -z "$$(git status --porcelain)" || { echo "Working tree isn't clean"; exit 1; }
+	@git fetch -q origin main --tags
+	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/main)" || { echo "main isn't in step with origin/main (git pull)"; exit 1; }
+	@! git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null || { \
+		echo "v$(VERSION) already exists: bump versionName and versionCode in app/build.gradle.kts first"; exit 1; }
+	git tag -a v$(VERSION) -m "COUNT-US-DOWN v$(VERSION)"
+	git push origin v$(VERSION)
+
+.PHONY: tags
+tags: ## List release tags, newest first
+	@git tag -l 'v*' --sort=-v:refname --format='%(refname:short)  %(creatordate:short)  %(subject)'
